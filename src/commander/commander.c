@@ -40,17 +40,33 @@ static void load_dir(const char *path) {
 	closedir(root);
 }
 
-static void display_dir() {	
-	mvprintw(0, NAME_HBORDER(COLS) / 2 - 2, "%s", "Name");
-	mvprintw(0, SIZE_HBORDER(COLS) - ENT_SIZE_WIDTH / 2 - 2, "%s", "Size");
-      	mvprintw(0, DATE_HBORDER(COLS) - DATE_WIDTH / 2 - 2, "%s", "Date");	
+static void display_dir(WINDOW *win) {	
+	wclear(win);
+	box(win, 0, 0);
 
-	for (int i = 0; i < LINES; i++) {
-		mvaddch(i, NAME_HBORDER(COLS), ACS_VLINE);
-		mvaddch(i, SIZE_HBORDER(COLS), ACS_VLINE);	
-		mvaddch(i, DATE_HBORDER(COLS), ACS_VLINE);
+	int x = getmaxx(win);
+	int y = getmaxy(win);
+
+	mvwprintw(win, 1, NAME_HBORDER(x) / 2 - 1, "%s", "Name");
+	mvwprintw(win, 1, SIZE_HBORDER(x) - SIZE_COL_WIDTH / 2 - 2, "%s", "Size"); 
+	mvwprintw(win, 1, DATE_HBORDER(x) - DATE_COL_WIDTH / 2 - 2 , "%s", "Date");
+	
+	for (int i = 1; i < x; i++) {			
+		if (i != x - DATE_COL_WIDTH - SIZE_COL_WIDTH && i != x - DATE_COL_WIDTH && i != x - 1) {
+			mvwaddch(win, 2, i, ACS_HLINE);
+		}		
+	}
+
+	for (int i = 0; i < LINES - 2; i++) {	
+		mvwaddch(win, i + 1, NAME_HBORDER(x), ACS_VLINE);
+		mvwaddch(win, i + 1, SIZE_HBORDER(x), ACS_VLINE);	
+		mvwaddch(win, i + 1, DATE_HBORDER(x), ACS_VLINE);
 	
 	}
+
+	struct tm tm;
+	char timebuf[64];
+	char datebuf[12];
 	
 	for (int i = 0; i < fs_ent_index; i++) {
 		fs_ent_info *fs_ent = fs_ent_infs + i;	
@@ -61,27 +77,14 @@ static void display_dir() {
 		}
 
 		if (type == DT_DIR || type == DT_LNK) {		
-			mvprintw(i + 2, 0, "/%s", fs_ent->name);	
+			mvwprintw(win, i + 3, 1, "/%s", fs_ent->name);	
 		}
 		else {	
-			mvprintw(i + 2, 1, "%s", fs_ent->name);		
+			mvwprintw(win, i + 3, 2, "%s", fs_ent->name);		
 			
 		}
 
 		attroff(COLOR_PAIR(1));
-
-	}
-
-	for (int i = 0; i < COLS / 2; i++) {	
-		if (i != COLS / 2 - DATE_WIDTH - ENT_SIZE_WIDTH && i != COLS / 2 - DATE_WIDTH) {
-			mvaddch(1, i, ACS_HLINE);
-		}		
-	}
-
-	struct tm tm;
-	char timebuf[64];
-	char datebuf[12];
-	for (int i = 0; i < fs_ent_index; i++) {	
 
 		int size = fs_ent_infs[i].size;
 		time_t time = fs_ent_infs[i].mod_time;
@@ -91,9 +94,11 @@ static void display_dir() {
 
 		snprintf(datebuf, sizeof(datebuf), "%d", size);	
 
-		mvprintw(i + 2, SIZE_HBORDER(COLS) - ENT_SIZE_WIDTH / 2 - strlen(datebuf) / 2, "%d", size);
-      		mvprintw(i + 2, DATE_HBORDER(COLS) - DATE_WIDTH / 2 - strlen(timebuf) / 2, "%s", timebuf);	
+		mvwprintw(win, i + 3, SIZE_HBORDER(x) - SIZE_COL_WIDTH / 2 - strlen(datebuf) / 2, "%d", size);
+      		mvwprintw(win, i + 3, DATE_HBORDER(x) - DATE_COL_WIDTH / 2 - strlen(timebuf) / 2, "%s", timebuf);	
 	}
+
+	wrefresh(win);
 }
 
 static bool is_dir(const fs_ent_info *fs_ent) {
@@ -146,7 +151,12 @@ void commander_run() {
 
 	init_pair(1, COLOR_BLUE, COLOR_WHITE);
 	init_pair(2, COLOR_WHITE, COLOR_WHITE);
-	
+
+	int height, width;
+	getmaxyx(stdscr, height, width);	
+	WINDOW *left_win = newwin(LINES, COLS / 2, 0, 0);
+	WINDOW *right_win = newwin(LINES, COLS / 2, 0, COLS / 2); 	
+
 	char cwd[PATH_MAX];
 	
 	if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -156,9 +166,16 @@ void commander_run() {
 
 	load_dir(cwd);
 	sort_dir();
-	display_dir();
+        
+       	refresh();	
+	box(left_win, 0, 0);
+	box(right_win, 0, 0);
+	display_dir(left_win);
+	display_dir(right_win);
+	wrefresh(left_win);
+	wrefresh(right_win);
 
-	char ch;
+        char ch;
 
 	while((ch = getch()) != 'q')	
 	{
@@ -204,10 +221,9 @@ void commander_run() {
 			sort_dir();		
 			selected = 0;	
 		}
-
-		clear();	
-		display_dir();
-		refresh();
+	
+		display_dir(left_win);
+		display_dir(right_win);
 	}
 	
 	endwin();

@@ -6,13 +6,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define NAME_WIDTH 30
-#define ENT_SIZE_WIDTH 15 
-#define DATE_WIDTH 26 
+#define NAME_COL_WIDTH 30
+#define SIZE_COL_WIDTH 15 
+#define DATE_COL_WIDTH 26 
 
-#define NAME_HBORDER(columns) (columns / 2 - DATE_WIDTH - ENT_SIZE_WIDTH)
-#define SIZE_HBORDER(columns) (columns / 2 - DATE_WIDTH)
-#define DATE_HBORDER(columns) (columns / 2)
+#define NAME_HBORDER(columns) (columns - DATE_COL_WIDTH - SIZE_COL_WIDTH)
+#define SIZE_HBORDER(columns) (columns - DATE_COL_WIDTH)
+#define DATE_HBORDER(columns) (columns - 1)
 
 typedef struct {
 	char name[128];
