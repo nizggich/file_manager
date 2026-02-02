@@ -1,17 +1,14 @@
 #include "commander.h"
 
-static fs_ent_info fs_ent_infs[2048];
-static int fs_ent_index = 0;
-static char current_path[PATH_MAX];
-static int selected = 0;
+static void load_dir(Panel *panel) {
 
-static void load_dir(const char *path) {
-
-	DIR *root = opendir(path);
+	DIR *root = opendir(panel->path);
 	struct dirent *fs_ent = NULL;
 	struct stat sb;
+	panel->count = 0;
+	char dir_element_path[1024];
 
-	while ((fs_ent = readdir(root)) != NULL) 
+	while ((fs_ent = readdir(root)) != NULL && panel->count < MAX_FILES) 
 	{
 		char *name = fs_ent->d_name;
 		int type = fs_ent->d_type;
@@ -19,28 +16,30 @@ static void load_dir(const char *path) {
 		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
 	       	{
 			continue;
-		}
-
-		fs_ent_info fs_ent = {0};
-		snprintf(fs_ent.name, sizeof(fs_ent.name), "%s", name);
-		fs_ent.type = type; 	
-		append_path_segment(path, fs_ent.name, fs_ent.path, sizeof(fs_ent.path));
+		}	
 		
-		if (stat(fs_ent.path, &sb) == 0) {
-			fs_ent.mode = sb.st_mode;	
-			fs_ent.size = sb.st_size;
-			fs_ent.mod_time = sb.st_mtim.tv_sec;
+		snprintf(panel->items[panel->count].name, sizeof(panel->items[panel->count].name), "%s", name);
+		panel->items[panel->count].mode = sb.st_mode;
+		panel->items[panel->count].size = 0;
+		panel->items[panel->count].mod_time = 0;
+		panel->items[panel->count].type = type;
+		append_path_segment(panel->path, name, dir_element_path, 1024);
+
+		if (stat(dir_element_path, &sb) == 0) {
+			panel->items[panel->count].mode = sb.st_mode;
+			panel->items[panel->count].size = sb.st_size;
+			panel->items[panel->count].mod_time = sb.st_mtim.tv_sec;
+
+
 		}
 
-		fs_ent_infs[fs_ent_index++] = fs_ent;
+		panel->count++;
 	}		
-
-	snprintf(current_path, sizeof(current_path),"%s", path); 		
 
 	closedir(root);
 }
 
-static void display_dir(WINDOW *win) {	
+static void display_dir(WINDOW *win, Panel *panel) {	
 	wclear(win);
 	box(win, 0, 0);
 
@@ -68,26 +67,26 @@ static void display_dir(WINDOW *win) {
 	char timebuf[64];
 	char datebuf[12];
 	
-	for (int i = 0; i < fs_ent_index; i++) {
-		fs_ent_info *fs_ent = fs_ent_infs + i;	
-		int type = fs_ent->type;
+	for (int i = 0; i < panel->count; i++) {
 
-		if ( i == selected) {
-			attron(COLOR_PAIR(1));
+		int type = panel->items[i].type;
+
+		if ( i == panel->selectedItem) {
+			wattron(win, COLOR_PAIR(1));
 		}
 
 		if (type == DT_DIR || type == DT_LNK) {		
-			mvwprintw(win, i + 3, 1, "/%s", fs_ent->name);	
+			mvwprintw(win, i + 3, 1, "/%s", panel->items[i].name);	
 		}
 		else {	
-			mvwprintw(win, i + 3, 2, "%s", fs_ent->name);		
+			mvwprintw(win, i + 3, 2, "%s", panel->items[i].name);		
 			
 		}
 
-		attroff(COLOR_PAIR(1));
+		wattroff(win, COLOR_PAIR(1));
 
-		int size = fs_ent_infs[i].size;
-		time_t time = fs_ent_infs[i].mod_time;
+		int size = panel->items[i].size;
+		time_t time = panel->items[i].mod_time;
 
 		localtime_r(&time, &tm);
 		strftime(timebuf, sizeof(timebuf), "%Y-%m-%d %H:%M:%S", &tm);
@@ -98,12 +97,12 @@ static void display_dir(WINDOW *win) {
       		mvwprintw(win, i + 3, DATE_HBORDER(x) - DATE_COL_WIDTH / 2 - strlen(timebuf) / 2, "%s", timebuf);	
 	}
 
-	wrefresh(win);
+	wnoutrefresh(win);
 }
 
-static bool is_dir(const fs_ent_info *fs_ent) {
+static bool is_dir(const FileInfo *file_info) {
 
-	if (fs_ent->mode != 0 && S_ISDIR(fs_ent->mode)) 
+	if (file_info->mode != 0 && S_ISDIR(file_info->mode)) 
 	{
 		return true;
 	}
@@ -111,8 +110,8 @@ static bool is_dir(const fs_ent_info *fs_ent) {
 }
 
 static int cmp_dir(const void *a, const void *b) {
-	fs_ent_info *a_ent = (fs_ent_info*) a;
-	fs_ent_info *b_ent = (fs_ent_info*) b;
+	FileInfo *a_ent = (FileInfo*) a;
+	FileInfo *b_ent = (FileInfo*) b;
 	
 	if (is_dir(a_ent) && is_dir(b_ent)) {
 		return strcmp_(a_ent->name, b_ent->name);
@@ -126,12 +125,11 @@ static int cmp_dir(const void *a, const void *b) {
 	else if (!is_dir(a_ent) && !is_dir(b_ent)) {
 		return strcmp_(a_ent->name, b_ent->name);
 	}	
-
-
 }
 
-static void sort_dir() {
-	qsort_(fs_ent_infs, fs_ent_index, sizeof(fs_ent_info), cmp_dir);
+
+static void sort_dir(Panel *panel) {
+	qsort_(panel->items, panel->count, sizeof(FileInfo), cmp_dir);
 }
 	
 void commander_run() {
@@ -156,74 +154,102 @@ void commander_run() {
 	getmaxyx(stdscr, height, width);	
 	WINDOW *left_win = newwin(LINES, COLS / 2, 0, 0);
 	WINDOW *right_win = newwin(LINES, COLS / 2, 0, COLS / 2); 	
-
-	char cwd[PATH_MAX];
 	
-	if (getcwd(cwd, sizeof(cwd)) == NULL) {
-	       cwd[0] = '/';
-	       cwd[1] = '\0';
-	}	      
+	Panel right_panel = {0};	
+	Panel left_panel = {0};
+	left_panel.active = true;
+	right_panel.selectedItem = -1;
 
-	load_dir(cwd);
-	sort_dir();
+	Panel *panels[] = {&left_panel, &right_panel};
+
+	getcwd(left_panel.path, sizeof(left_panel.path));    
+	getcwd(right_panel.path, sizeof(right_panel.path));
+
+	load_dir(&left_panel);
+	load_dir(&right_panel);
+	sort_dir(&left_panel);
+	sort_dir(&right_panel);
         
        	refresh();	
 	box(left_win, 0, 0);
 	box(right_win, 0, 0);
-	display_dir(left_win);
-	display_dir(right_win);
+	display_dir(left_win, &left_panel);
+	display_dir(right_win, &right_panel);
 	wrefresh(left_win);
 	wrefresh(right_win);
 
         char ch;
-
+	int activePanel = 0;
+//     wclear(left_win);
+//     wclear(right_win);  //TAB = 9
+//     while ((ch = getch()) != 'q') {
+//	attron(COLOR_PAIR(1));
+//     	mvwprintw(stdscr, 15, 15, "%s\n", "HELLO");
+//	attroff(COLOR_PAIR(1));
+//     	mvwprintw(right_win, 15, 16, "%d\n", ch);
+//     	wrefresh(left_win);
+//     	wrefresh(right_win);
+//     }
+//
 	while((ch = getch()) != 'q')	
 	{
-		if (ch == 119 && selected > 0) {//s
-			selected--;
+		Panel *panel = panels[activePanel];
+
+		if (ch == 119 && panel->selectedItem > 0) {//w
+			panel->selectedItem--;
 		}
-		else if (ch == 115 && selected < fs_ent_index - 1) {//w
-			selected++;
+		else if (ch == 115 && panel->selectedItem < panel->count - 1) {//s
+			panel->selectedItem++;
+		}
+		else if (ch == 9)  { //Tab
+			if (activePanel == PANEL_COUNT - 1)
+				activePanel = 0;
+			else 
+				activePanel++;
+
+			panel->active = false;
+			panel->selectedItem = -1;	
+
+			panels[activePanel]->active = true;
+			panels[activePanel]->selectedItem = 0;	
 		}
 		else if (ch == 10) {//Enter 
-				    
-			fs_ent_info *fs_ent = fs_ent_infs + selected;
-			int type = fs_ent->type;
+		
+			FileInfo fileInfo = panel->items[panel->selectedItem];	
+			int type = fileInfo.type;
 
-			if ((type == DT_DIR || type == DT_LNK) && fs_ent_index > 0) {
-			   	
-				char result_path[256];
-			       	append_path_segment(current_path, fs_ent_infs[selected].name, result_path, 256);
+			if ((type == DT_DIR || type == DT_LNK) && panel->count > 0) {
 				
-				fs_ent_index = 0;
-				load_dir(result_path);	
-				sort_dir();
-				selected = 0;	
+				char result[2048];//what wrong with append_path_segment	
+				strcpy(result, panel->path);
+				append_path_segment(panel->path, fileInfo.name, result, MAX_PATH);
+				strcpy(panel->path, result);
+
+			  	panel->selectedItem = 0;	
+				load_dir(panel);	
+				sort_dir(panel);
 			} 
 			else if (type == DT_REG) {
 				def_prog_mode();
 				endwin();
 
 				char cmd[2048];
-			   	snprintf(cmd, sizeof(cmd), "vim %s%s", current_path, fs_ent->name);
+				snprintf(cmd, sizeof(cmd), "vim %s/%s", panel->path, fileInfo.name);
 				int result = system(cmd);
 
 				reset_prog_mode();
 				refresh();	
-			}
+				}
 		}
 		else if (ch == 7) {//Backspace
-			char result_path[256];
-			substract_path_segment(current_path, result_path, 256);
-		
-			fs_ent_index = 0;	
-			load_dir(result_path);
-			sort_dir();		
-			selected = 0;	
-		}
-	
-		display_dir(left_win);
-		display_dir(right_win);
+			substract_path_segment(panel->path, panel->path, MAX_PATH);
+			panel->selectedItem = 0;//make return to same index	
+			load_dir(panel);
+			sort_dir(panel);		
+		}	
+		display_dir(left_win, &left_panel);
+		display_dir(right_win, &right_panel);
+		doupdate();
 	}
 	
 	endwin();

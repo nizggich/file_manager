@@ -6,6 +6,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#define PANEL_COUNT 2
+
+#define MAX_PATH 2048 
+#define MAX_FILES 2048
+
 #define NAME_COL_WIDTH 30
 #define SIZE_COL_WIDTH 15 
 #define DATE_COL_WIDTH 26 
@@ -22,6 +27,22 @@ typedef struct {
 	off_t size;
 	time_t mod_time;	
 } fs_ent_info;
+
+typedef struct {
+	char name[128];	
+	unsigned int type;
+	mode_t mode;
+	off_t size;
+	time_t mod_time;	
+} FileInfo;
+
+typedef struct {
+	char path[MAX_PATH];
+	FileInfo items[MAX_FILES];	
+	bool active;
+	int count;
+	int selectedItem;
+} Panel;
 
 void commander_run();
 
