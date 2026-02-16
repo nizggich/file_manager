@@ -8,6 +8,10 @@
 
 #define PANEL_COUNT 2
 
+#define PAGE_SIZE (LINES - 4)
+
+#define Y_OFFSET 3
+
 #define MAX_PATH 2048 
 #define MAX_FILES 2048
 
@@ -20,15 +24,6 @@
 #define DATE_HBORDER(columns) (columns - 1)
 
 typedef struct {
-	char name[128];
-	char path[1024];
-	unsigned int type;
-	mode_t mode;
-	off_t size;
-	time_t mod_time;	
-} fs_ent_info;
-
-typedef struct {
 	char name[128];	
 	unsigned int type;
 	mode_t mode;
@@ -37,12 +32,19 @@ typedef struct {
 } FileInfo;
 
 typedef struct {
-	char path[MAX_PATH];
+	char path[MAX_PATH];//mb pointer a ne sam massiv
 	FileInfo items[MAX_FILES];	
 	bool active;
 	int count;
-	int selectedItem;
+	int selected_item;
+	WINDOW *win;
 } Panel;
+
+typedef enum {
+	UP,
+	DOWN,
+	IN_PLACE	
+} Direction;
 
 void commander_run();
 

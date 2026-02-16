@@ -13,7 +13,7 @@ static void load_dir(Panel *panel) {
 		char *name = fs_ent->d_name;
 		int type = fs_ent->d_type;
 		
-		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+		if (strcmp(name, ".") == 0)
 	       	{
 			continue;
 		}	
@@ -39,52 +39,89 @@ static void load_dir(Panel *panel) {
 	closedir(root);
 }
 
-static void display_dir(WINDOW *win, Panel *panel) {	
+static int get_y(int selected_item) {
+	int page = selected_item / PAGE_SIZE; 
+	return selected_item - page * PAGE_SIZE + 3; 	
+}
+
+static void display_dir_item_iternal(WINDOW *win, char *name, int type, int y, bool highlight) {
+
+	if (highlight) {
+		wattron(win, COLOR_PAIR(1));
+	}
+	
+	if (type == DT_DIR || type == DT_LNK) {		
+		mvwprintw(win, y, 1, "/%s", name);	
+	}
+	else {	
+		mvwprintw(win, y, 2, "%s", name);				
+	}
+	
+	wattroff(win, COLOR_PAIR(1));
+}
+
+static void display_ui(Panel *panel) {
+	WINDOW *win = panel->win;
+
 	wclear(win);
 	box(win, 0, 0);
 
-	int x = getmaxx(win);
-	int y = getmaxy(win);
+	int max_x = getmaxx(win);
+	int max_y = getmaxy(win);
 
-	mvwprintw(win, 1, NAME_HBORDER(x) / 2 - 1, "%s", "Name");
-	mvwprintw(win, 1, SIZE_HBORDER(x) - SIZE_COL_WIDTH / 2 - 2, "%s", "Size"); 
-	mvwprintw(win, 1, DATE_HBORDER(x) - DATE_COL_WIDTH / 2 - 2 , "%s", "Date");
+	mvwprintw(win, 1, NAME_HBORDER(max_x) / 2 - 1, "%s", "Name");
+	mvwprintw(win, 1, SIZE_HBORDER(max_x) - SIZE_COL_WIDTH / 2 - 2, "%s", "Size"); 
+	mvwprintw(win, 1, DATE_HBORDER(max_x) - DATE_COL_WIDTH / 2 - 2 , "%s", "Date");
 	
-	for (int i = 1; i < x; i++) {			
-		if (i != x - DATE_COL_WIDTH - SIZE_COL_WIDTH && i != x - DATE_COL_WIDTH && i != x - 1) {
+	for (int i = 1; i < max_x; i++) {			
+		if (i != max_x - DATE_COL_WIDTH - SIZE_COL_WIDTH && i != max_x - DATE_COL_WIDTH && i != max_x - 1) {
 			mvwaddch(win, 2, i, ACS_HLINE);
 		}		
 	}
 
 	for (int i = 0; i < LINES - 2; i++) {	
-		mvwaddch(win, i + 1, NAME_HBORDER(x), ACS_VLINE);
-		mvwaddch(win, i + 1, SIZE_HBORDER(x), ACS_VLINE);	
-		mvwaddch(win, i + 1, DATE_HBORDER(x), ACS_VLINE);
+		mvwaddch(win, i + 1, NAME_HBORDER(max_x), ACS_VLINE);
+		mvwaddch(win, i + 1, SIZE_HBORDER(max_x), ACS_VLINE);	
+		mvwaddch(win, i + 1, DATE_HBORDER(max_x), ACS_VLINE);
 	
 	}
+	wrefresh(win);
+}
+
+static void clear_dir(WINDOW *win) {	
+	int max_x = getmaxx(win);
+
+	for (int i = Y_OFFSET; i < LINES - 1; i++) {
+		mvwhline(win, i, 1, ' ', NAME_HBORDER(max_x) - 1);
+		mvwhline(win, i, NAME_HBORDER(max_x) + 1, ' ', SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1); 
+		mvwhline(win, i, SIZE_HBORDER(max_x) + 1, ' ', DATE_HBORDER(max_x) - SIZE_HBORDER(max_x) - 1);
+	}
+}
+
+static void display_dir(Panel *panel) {	
+	WINDOW *win = panel->win;
+
+	clear_dir(win);
 
 	struct tm tm;
 	char timebuf[64];
 	char datebuf[12];
 	
-	for (int i = 0; i < panel->count; i++) {
+	int max_x = getmaxx(win);
+	int max_y = getmaxy(win);
 
-		int type = panel->items[i].type;
+	int y = Y_OFFSET; 	
 
-		if ( i == panel->selectedItem) {
-			wattron(win, COLOR_PAIR(1));
+	for (int i = panel->selected_item; i < panel->count; i++) {
+
+		if (y >= LINES - 1) {
+			break;
 		}
 
-		if (type == DT_DIR || type == DT_LNK) {		
-			mvwprintw(win, i + 3, 1, "/%s", panel->items[i].name);	
-		}
-		else {	
-			mvwprintw(win, i + 3, 2, "%s", panel->items[i].name);		
-			
-		}
+		int type = panel->items[i].type;		
 
-		wattroff(win, COLOR_PAIR(1));
-
+		display_dir_item_iternal(panel->win, panel->items[i].name, type, y, false);
+				
 		int size = panel->items[i].size;
 		time_t time = panel->items[i].mod_time;
 
@@ -93,11 +130,49 @@ static void display_dir(WINDOW *win, Panel *panel) {
 
 		snprintf(datebuf, sizeof(datebuf), "%d", size);	
 
-		mvwprintw(win, i + 3, SIZE_HBORDER(x) - SIZE_COL_WIDTH / 2 - strlen(datebuf) / 2, "%d", size);
-      		mvwprintw(win, i + 3, DATE_HBORDER(x) - DATE_COL_WIDTH / 2 - strlen(timebuf) / 2, "%s", timebuf);	
+		mvwprintw(win, y, SIZE_HBORDER(max_x) - SIZE_COL_WIDTH / 2 - strlen(datebuf) / 2, "%d", size);
+      		mvwprintw(win, y, DATE_HBORDER(max_x) - DATE_COL_WIDTH / 2 - strlen(timebuf) / 2, "%s", timebuf);	
+
+		y++;
 	}
 
 	wnoutrefresh(win);
+}
+
+static void display_dir_item(Panel *panel, int selected_item, bool highlight) {
+	int y = get_y(selected_item);
+	FileInfo *file_info = &panel->items[selected_item];
+	display_dir_item_iternal(panel->win, file_info->name, file_info->type, y, highlight);	
+}
+
+static void move_selection(Panel *panel, Direction direction) {	
+	int old_selection = panel->selected_item;
+	int new_selection = 0;
+
+	switch(direction) {
+		case UP:
+			new_selection = old_selection - 1;
+			break;
+		case DOWN:
+			new_selection = old_selection + 1;
+			break;
+		default:
+			new_selection = old_selection;
+			break;
+	}
+			
+	display_dir_item(panel, old_selection, false);	
+	display_dir_item(panel, new_selection, true);	
+	
+	wnoutrefresh(panel->win);
+}
+
+static void switch_panel(Panel *old_panel, Panel *new_panel) {
+	display_dir_item(old_panel, old_panel->selected_item, false);
+	display_dir_item(new_panel, new_panel->selected_item, true);	
+
+	wnoutrefresh(old_panel->win);
+	wnoutrefresh(new_panel->win);
 }
 
 static bool is_dir(const FileInfo *file_info) {
@@ -157,8 +232,13 @@ void commander_run() {
 	
 	Panel right_panel = {0};	
 	Panel left_panel = {0};
+
+	left_panel.win = left_win;
 	left_panel.active = true;
-	right_panel.selectedItem = -1;
+	left_panel.selected_item = 0;
+
+	right_panel.win = right_win;
+	right_panel.selected_item = 0;
 
 	Panel *panels[] = {&left_panel, &right_panel};
 
@@ -173,33 +253,52 @@ void commander_run() {
        	refresh();	
 	box(left_win, 0, 0);
 	box(right_win, 0, 0);
-	display_dir(left_win, &left_panel);
-	display_dir(right_win, &right_panel);
+	display_ui(&left_panel);
+	display_ui(&right_panel);
+	display_dir(&left_panel);
+	move_selection(&left_panel, IN_PLACE);
+	display_dir(&right_panel);
 	wrefresh(left_win);
 	wrefresh(right_win);
 
         char ch;
 	int activePanel = 0;
-//     wclear(left_win);
-//     wclear(right_win);  //TAB = 9
-//     while ((ch = getch()) != 'q') {
-//	attron(COLOR_PAIR(1));
-//     	mvwprintw(stdscr, 15, 15, "%s\n", "HELLO");
-//	attroff(COLOR_PAIR(1));
-//     	mvwprintw(right_win, 15, 16, "%d\n", ch);
-//     	wrefresh(left_win);
-//     	wrefresh(right_win);
-//     }
-//
+	//wclear(left_win);
+//	wclear(right_win);  //TAB = 9
+//	int y = get_y(47);
+//	  while ((ch = getch()) != 'q') {
+//		attron(COLOR_PAIR(1));
+//		mvwprintw(stdscr, 49, 0, "%s\n", "!");
+//		attroff(COLOR_PAIR(1));
+//		//mvwprintw(right_win, 15, 20, "%d\n", ch);
+//		wrefresh(left_win);
+//		wrefresh(right_win);
+//}
+
 	while((ch = getch()) != 'q')	
 	{
 		Panel *panel = panels[activePanel];
 
-		if (ch == 119 && panel->selectedItem > 0) {//w
-			panel->selectedItem--;
+		if (ch == 119 && panel->selected_item > 0) {//w
+			if (get_y(panel->selected_item) == Y_OFFSET) {
+			     panel->selected_item = panel->selected_item - PAGE_SIZE;
+		     	     display_dir(panel);
+			     panel->selected_item = panel->selected_item + PAGE_SIZE - 1;
+			     move_selection(panel, IN_PLACE);
+			} else {	     
+				move_selection(panel, UP);
+				panel->selected_item--;
+			}
 		}
-		else if (ch == 115 && panel->selectedItem < panel->count - 1) {//s
-			panel->selectedItem++;
+		else if (ch == 115 && panel->selected_item < panel->count - 1) {//s
+			if (get_y(panel->selected_item) == LINES - 2) {
+				panel->selected_item++;
+				display_dir(panel);
+				move_selection(panel, IN_PLACE);
+			} else {
+				move_selection(panel, DOWN);	
+				panel->selected_item++;
+			}
 		}
 		else if (ch == 9)  { //Tab
 			if (activePanel == PANEL_COUNT - 1)
@@ -208,14 +307,13 @@ void commander_run() {
 				activePanel++;
 
 			panel->active = false;
-			panel->selectedItem = -1;	
-
 			panels[activePanel]->active = true;
-			panels[activePanel]->selectedItem = 0;	
+
+			switch_panel(panel, panels[activePanel]);
 		}
 		else if (ch == 10) {//Enter 
 		
-			FileInfo fileInfo = panel->items[panel->selectedItem];	
+			FileInfo fileInfo = panel->items[panel->selected_item];	
 			int type = fileInfo.type;
 
 			if ((type == DT_DIR || type == DT_LNK) && panel->count > 0) {
@@ -225,9 +323,11 @@ void commander_run() {
 				append_path_segment(panel->path, fileInfo.name, result, MAX_PATH);
 				strcpy(panel->path, result);
 
-			  	panel->selectedItem = 0;	
+			  	panel->selected_item = 0;	
 				load_dir(panel);	
 				sort_dir(panel);
+				display_dir(panel);
+				move_selection(panel, IN_PLACE);
 			} 
 			else if (type == DT_REG) {
 				def_prog_mode();
@@ -243,12 +343,12 @@ void commander_run() {
 		}
 		else if (ch == 7) {//Backspace
 			substract_path_segment(panel->path, panel->path, MAX_PATH);
-			panel->selectedItem = 0;//make return to same index	
+			panel->selected_item = 0;//make return to same index	
 			load_dir(panel);
 			sort_dir(panel);		
+			display_dir(panel);
+			move_selection(panel, IN_PLACE);
 		}	
-		display_dir(left_win, &left_panel);
-		display_dir(right_win, &right_panel);
 		doupdate();
 	}
 	
