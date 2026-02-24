@@ -57,7 +57,6 @@ typedef struct {
 	bool active;
 	int count;
 	int selected_item;
-	char last_visited_dir[128];
 	WINDOW *win;
 } Panel;
 

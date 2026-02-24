@@ -68,7 +68,7 @@ static void load_dir(Panel *panel) {
 		char *name = fs_ent->d_name;
 		int type = fs_ent->d_type;
 		
-		if (strcmp(name, ".") == 0)
+		if (strcmp(name, ".") == 0 || (strcmp(panel->path, "/") == 0 && strcmp(name, "..") == 0))
 	       	{
 			continue;
 		}	
@@ -278,27 +278,29 @@ static void sort_dir(Panel *panel) {
 	qsort_(panel->items, panel->count, sizeof(FileInfo), cmp_dir);
 }
 
-static int get_index_dir_by_name(Panel *panel) {
+static int get_index_dir_by_name(Panel *panel, char *dir_name) {
 	for (int i = 0; i < panel->count; i++) {
 		FileInfo *file_info = &panel->items[i];
-		if (strcmp_(file_info->name, panel->last_visited_dir) == 0) {
+		if (strcmp_(file_info->name, dir_name) == 0) {
 				return i;
-		}
-	
+		}	
 	}
 
 	return 0;
-
 }
-	
+
 static void exit_dir(Panel *panel) {
+
+	char entry_name[128];
+	get_last_segment(panel->path, entry_name, sizeof(entry_name));
+
 	substract_path_segment(panel->path, panel->path, MAX_PATH);
 	panel->selected_item = 0;
 	panel->count = 0;
 	load_dir(panel);
 	sort_dir(panel);		
 	display_dir(panel);
-//	panel->selected_item = get_index_dir_by_name(panel);
+	panel->selected_item = get_index_dir_by_name(panel, entry_name);
 	move_selection(panel, panel->selected_item);
 }
 
@@ -319,7 +321,6 @@ static void enter_dir(Panel *panel) {
 		append_path_segment(panel->path, fileInfo->name, result, MAX_PATH);
 		strcpy(panel->path, result);
 		
-	//	strcpy(panel->last_visited_dir, name);	
 		panel->selected_item = 0;	
 		panel->count = 0;
 		load_dir(panel);	
@@ -391,7 +392,6 @@ void commander_run() {
 	sort_dir(&left_panel);
 	sort_dir(&right_panel);
         
-       	refresh();	
 	box(left_win, 0, 0);
 	box(right_win, 0, 0);
 	display_ui(&left_panel);
@@ -403,17 +403,6 @@ void commander_run() {
 
         char ch;
 	int activePanel = 0;
-//	wclear(left_win);
-//	wclear(right_win);  //TAB = 9
-//	int y = get_y(47);
-//	  while ((ch = getch()) != 'q') {
-//		attron(COLOR_PAIR(1));
-//		mvwprintw(stdscr, 10, 10, "%d\n", COLOR_PAIR(3));
-//		attroff(COLOR_PAIR(1));
-//		//mvwprintw(right_win, 15, 20, "%d\n", ch);
-//		wrefresh(left_win);
-//		wrefresh(right_win);
-//}
 
 	while((ch = getch()) != 'q')	
 	{

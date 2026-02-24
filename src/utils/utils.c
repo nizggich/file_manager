@@ -47,44 +47,66 @@ int strcmp_(const char *a, const char *b) {
 }
 
 
-void append_path_segment(char *base_path, char *segment, char *result, int result_size) {
-	if (!base_path || !segment || !result || result_size <= 0) {
+void append_path_segment(char *base_path, char *segment, char *buf, int buf_size) {
+	if (!base_path || !segment || !buf || buf_size <= 0) {
 		return;
 	}
 
 	int len = strlen(base_path);
 	
 	if (len == 0) {
-		snprintf(result, result_size, "/%s", segment);
+		snprintf(buf, buf_size, "/%s", segment);
 	}
 	else if (base_path[len - 1] == '/') {
-		snprintf(result, result_size, "%s%s", base_path, segment);
+		snprintf(buf, buf_size, "%s%s", base_path, segment);
 	}
 	else {
-		snprintf(result, result_size, "%s/%s", base_path, segment);
+		snprintf(buf, buf_size, "%s/%s", base_path, segment);
 	}
 }
 
-void substract_path_segment(char *base_path, char *result, int result_size) {
-	if (!base_path || strlen(base_path) > result_size) {
-		return;
+int get_last_segment_start_index(char *path) {
+	if (path == NULL) {
+		return 0;
 	}
 
-	int i = strlen(base_path) - 1;	
-	char *end_path = base_path + i;	
+	int i = strlen(path) - 1;	
+	char *end_path = path + i;	
 	char tmp;
 	while ((tmp = *end_path) != '/') {
 		end_path--;
 		i--;
 	}
+	
+	return i + 1;
+}
 
-	strncpy(result, base_path, i + 1);
+void get_last_segment(char *path, char *buf, int buf_size) {
 
-	if (i == 0) {
-		result[i + 1] = '\0';
+	int i = get_last_segment_start_index(path);
+	int len = strlen(path) - i;
+	strncpy(buf, path + i, len);
+	buf[len] = '\0';
+}
+
+void substract_path_segment(char *base_path, char *buf, int buf_size) {
+	if (!base_path  || !buf || strlen(base_path) > buf_size) {
+		return;
+	}
+
+	int i = get_last_segment_start_index(base_path);
+	
+	if (i + 1 > buf_size) {
+		return; 
+	}
+
+	strncpy(buf, base_path, i);
+
+	if (i == 1) {
+		buf[i] = '\0';
 	 }
 	else {
-		result[i] = '\0';
+		buf[i - 1] = '\0';
 	}	
 	
 }
