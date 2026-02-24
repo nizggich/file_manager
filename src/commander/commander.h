@@ -23,28 +23,43 @@
 #define SIZE_HBORDER(columns) (columns - DATE_COL_WIDTH)
 #define DATE_HBORDER(columns) (columns - 1)
 
+typedef enum 
+{
+	CP_DIR = 1,
+	CP_BIN_DATA = 1,
+	CP_EXE_SCR = 2,
+	CP_EXE_BIN = 3,
+	CP_SELECTED_ITEM = 4
+} ColorPair;
+
+typedef enum {
+	FILE_TYPE_DIRECTORY,
+	FILE_TYPE_EXECUTABLE_SCRIPT,
+	FILE_TYPE_EXECUTABLE_BINARY,
+	FILE_TYPE_BINARY_DATA,
+	FILE_TYPE_TEXT_PLAIN
+} FileType;
+
+
 typedef struct {
 	char name[128];	
+	char path[512];
 	unsigned int type;
 	mode_t mode;
 	off_t size;
 	time_t mod_time;	
+	FileType file_type;
 } FileInfo;
 
 typedef struct {
-	char path[MAX_PATH];//mb pointer a ne sam massiv
-	FileInfo items[MAX_FILES];	
+	char path[512];//mb pointer a ne sam massiv
+	FileInfo items[2048];	
 	bool active;
 	int count;
 	int selected_item;
+	char last_visited_dir[128];
 	WINDOW *win;
 } Panel;
-
-typedef enum {
-	UP,
-	DOWN,
-	IN_PLACE	
-} Direction;
 
 void commander_run();
 

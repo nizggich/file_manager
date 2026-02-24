@@ -5,50 +5,6 @@ int cmp_str(const void *a, const void *b) {
 	const char *b_ptr = *(const char **)b;
 	
 	return strcmp_(a_ptr, b_ptr);
-//	int a_len = 0;
-//	int b_len = 0;
-//	
-//	while (1)
-//	{
-//		
-//		if (*a_ptr == '\0') 
-//		{
-//			while (*b_ptr != '\0')
-//			{
-//				b_len++;
-//				b_ptr++;
-//			}
-//			break;
-//		}
-//		else if (*b_ptr == '\0') 
-//		{
-//			while (*a_ptr != '\0')
-//			{
-//				a_len++;
-//				a_ptr++;
-//			}
-//			break;
-//		}
-//
-//		if (*a_ptr > *b_ptr)
-//			return 1;
-//		else if (*a_ptr < *b_ptr) 
-//			return -1;
-//
-//	        a_len++;
-//		b_len++;
-//		
-//		a_ptr++;
-//		b_ptr++;
-//	}
-//	
-//	if (a_len == b_len) 
-//		return 0;
-//	else if (a_len > b_len)
-//		return 1;
-//	else 
-//		return -1;	
-//	
 }
 
 int cmp_int(const void *a, const void *b) {
