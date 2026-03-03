@@ -3,7 +3,7 @@
 CC = gcc
 LIBS = ncurses
 
-SRCS = src/main.c src/commander/commander.c src/qsort/qsort.c src/utils/utils.c
+SRCS = src/main.c src/commander/commander.c src/fs/fs.c src/ui/ui.c src/panel/panel.c src/qsort/qsort.c src/utils/utils.c
 TARGET = commander_
 
 .PHONY: build run clean
