@@ -28,23 +28,23 @@ int cmp_dir(const void *a, const void *b) {
 }
 
 
-bool is_text_file(const char *path) {
-
-	FILE *f = fopen(path, "rb");
-	if (!f) return false;
-
-	unsigned char buffer[512];
-	size_t n = fread(buffer, 1, sizeof(buffer), f);
-	fclose(f);
-
-	for (size_t i = 0; i < n; i++) {
-		if(buffer[i] == '\0') {
-			return false;
-		}
-	}
-	
-	return true;
-}
+//bool is_text_file(const char *path) {
+//
+//	FILE *f = fopen(path, "rb");
+//	if (!f) return false;
+//
+//	unsigned char buffer[512];
+//	size_t n = fread(buffer, 1, sizeof(buffer), f);
+//	fclose(f);
+//
+//	for (size_t i = 0; i < n; i++) {
+//		if(buffer[i] == '\0') {
+//			return false;
+//		}
+//	}
+//	
+//	return true;
+//}
 
 FileType classify_file(const char *path) {
 	struct stat st;
@@ -56,14 +56,35 @@ FileType classify_file(const char *path) {
 		return FILE_TYPE_DIRECTORY;
 	}
 
-	bool executable = (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
-	bool is_text = is_text_file(path); 
+	FileType result = FILE_TYPE_TEXT_PLAIN;
 
-	if (executable) {
-		return is_text ? FILE_TYPE_EXECUTABLE_SCRIPT : FILE_TYPE_EXECUTABLE_BINARY;
-	} else {
-		return is_text ? FILE_TYPE_TEXT_PLAIN : FILE_TYPE_BINARY_DATA;
-	}
+	FILE *file = fopen(path, "rb");
+	if (!file) return FILE_TYPE_EXECUTABLE_BINARY;
+	
+	unsigned char buf[512];
+	size_t n = 0;
+	if ((n = fread(buf, 1, sizeof(buf), file)) > 0) {
+		if (buf[0] == 0x7F && buf[1] == 'E' &&
+		    buf[2] == 'L' && buf[3] == 'F') {
+
+			result = FILE_TYPE_EXECUTABLE_BINARY;
+		} 
+
+		else if (buf[0] == '#' && buf[1] == '!') {
+			result = FILE_TYPE_EXECUTABLE_SCRIPT;
+		}	
+		else {
+			for (size_t i = 0; i < n; i++) {
+				if (buf[i] == '\0') {
+					result = FILE_TYPE_BINARY_DATA;
+				}
+			}
+
+		}
+	}	
+
+	fclose(file);
+	return result;
 }
 
 int load_dir(char *path, FileInfo *buf, int buf_size) {
