@@ -181,7 +181,7 @@ void commander_run() {
         int last_entry_y = get_y(panel->count - 1, PAGE_SIZE);
 
         new_selected_item = selected_item +
-                            (PAGE_SIZE - current_entry_y - Y_TOP_OFFSET + 1) +
+                            (PAGE_SIZE - (current_entry_y - Y_TOP_OFFSET + 1)) +
                             ((last_entry_y - Y_TOP_OFFSET + 1) / 2);
       }
 
