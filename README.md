@@ -5,7 +5,9 @@
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Unix-lightgrey.svg)](#)
 [![Build](https://img.shields.io/badge/build-Makefile-green.svg)](#)
 
-Минималистичный двухпанельный файловый менеджер в стиле Midnight Commander, написанный на чистом C с использованием библиотеки ncurses. Идеально подходит для работы в терминале, навигации по файловой системе.  
+Минималистичный двухпанельный файловый менеджер в стиле Midnight Commander, написанный на чистом C с использованием библиотеки ncurses. Идеально подходит для работы в терминале и навигации по файловой системе.
+
+<img width="1283" height="803" alt="image" src="https://github.com/user-attachments/assets/6447de0a-8724-4c11-8f7d-77dca602061f" />    
 
 ---
 
