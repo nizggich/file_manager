@@ -1,4 +1,4 @@
-# 🗂️ commander
+# 🗂️ emperor
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Language](https://img.shields.io/badge/language-C99-orange.svg)](https://en.cppreference.com/w/c)
