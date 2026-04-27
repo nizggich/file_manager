@@ -222,8 +222,9 @@ void display_dir(Panel *panel) {
   WINDOW *win = panel->win;
   FileInfo *items = panel->items;
 
-  int start = panel->selected_item;
-  int end = panel->count;
+  int item_y = get_y(panel->selected_item, PAGE_SIZE);
+  int start = panel->selected_item - (item_y - Y_TOP_OFFSET);
+  int end = panel->selected_item + (Y_BOTTOM_OFFSET - item_y);
 
   erase_dir_area(panel);
 
@@ -238,13 +239,8 @@ void display_dir(Panel *panel) {
 
   int color_pair = get_color_pair(CP_DIR);
 
-  for (int i = start; i < end; i++) {
-
+  for (int i = start; i <= end && i < panel->count; i++) {
     FileInfo *item = items + i;
-
-    if (y >= Y_BOTTOM_OFFSET) {
-      break;
-    }
 
     display_dir_item_by_type(win, item->name, item->file_type, y, false);
 
@@ -261,10 +257,10 @@ void display_dir(Panel *panel) {
     int date_len = strlen(datebuf);
     int size_len = strlen(sizebuf);
 
-    int size_left_gap = 0;
+    int size_left_gap = 1;
     int size_right_gap = 0;
-    init_header_gaps(size_header_len, size_len, &size_left_gap,
-                     &size_right_gap);
+    // init_header_gaps(size_header_len, size_len, &size_left_gap,
+    //                 &size_right_gap);
 
     int date_left_gap = 0;
     int date_right_gap = 0;
@@ -280,7 +276,7 @@ void display_dir(Panel *panel) {
     truncate_size(sizebuf, size_start_x, size_end_x);
     truncate_date(datebuf, date_start_x, date_end_x);
 
-    printw_str(win, sizebuf, size_start_x + 1, y, "%s");
+    printw_str(win, sizebuf, size_start_x, y, "%s");
     printw_str(win, datebuf, date_start_x + 1, y, "%s");
 
     y++;

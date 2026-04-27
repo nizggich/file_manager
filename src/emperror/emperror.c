@@ -1,6 +1,7 @@
 #include "emperror.h"
 #include <asm-generic/ioctls.h>
 #include <ncurses.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -46,8 +47,11 @@ void commander_run() {
 
   Panel *panels[] = {&left_panel, &right_panel};
 
-  getcwd(left_panel.path, sizeof(left_panel.path));
-  getcwd(right_panel.path, sizeof(right_panel.path));
+  // getcwd(left_panel.path, sizeof(left_panel.path));
+  // getcwd(right_panel.path, sizeof(right_panel.path));
+
+  strcpy(left_panel.path, "/bin");
+  strcpy(right_panel.path, "/bin");
 
   int quantity = load_dir(left_panel.path, left_panel.items, 512);
   left_panel.count = quantity;
@@ -90,16 +94,18 @@ void commander_run() {
       left_panel.win = newwin(LINES, COLS / 2, 0, 0);
       right_panel.win = newwin(LINES, COLS / 2, 0, COLS / 2);
 
-      box(left_win, 0, 0);
-      box(right_win, 0, 0);
+      box(left_panel.win, 0, 0);
+      box(right_panel.win, 0, 0);
+
       display_ui(&left_panel);
       display_ui(&right_panel);
       display_dir(&left_panel);
-      move_selection(&left_panel, left_panel.selected_item);
       display_dir(&right_panel);
+      move_selection(panel, panel->selected_item);
 
       wnoutrefresh(left_panel.win);
       wnoutrefresh(right_panel.win);
+      doupdate();
 
     } else if (ch == 'k' && panel->selected_item > 0) { // w //119
       if (get_y(panel->selected_item, PAGE_SIZE) == Y_TOP_OFFSET) {
@@ -115,8 +121,19 @@ void commander_run() {
                panel->selected_item < panel->count - 1) { // s //115
       if (get_y(panel->selected_item, PAGE_SIZE) == Y_BOTTOM_OFFSET) {
         panel->selected_item++;
+
+        int new_selected_item = 0;
+        int diff = panel->count - (panel->selected_item + 1);
+
         display_dir(panel);
-        panel->selected_item = panel->selected_item + (PAGE_SIZE - 1) / 2;
+
+        if (diff < PAGE_SIZE - 1) {
+          new_selected_item = panel->selected_item + diff / 2;
+        } else {
+          new_selected_item = panel->selected_item + (PAGE_SIZE - 1) / 2;
+        }
+
+        panel->selected_item = new_selected_item;
         move_selection(panel, panel->selected_item);
       } else {
         move_selection(panel, panel->selected_item + 1);
@@ -136,7 +153,7 @@ void commander_run() {
 
       enter_dir(panel);
     } else if (ch == 263) { // Backspace
-      exit_dir(panel);
+       exit_dir(panel);
     }
 
     doupdate();
