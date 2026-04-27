@@ -47,11 +47,8 @@ void commander_run() {
 
   Panel *panels[] = {&left_panel, &right_panel};
 
-  // getcwd(left_panel.path, sizeof(left_panel.path));
-  // getcwd(right_panel.path, sizeof(right_panel.path));
-
-  strcpy(left_panel.path, "/bin");
-  strcpy(right_panel.path, "/bin");
+  getcwd(left_panel.path, sizeof(left_panel.path));
+   getcwd(right_panel.path, sizeof(right_panel.path));
 
   int quantity = load_dir(left_panel.path, left_panel.items, 512);
   left_panel.count = quantity;
@@ -153,7 +150,7 @@ void commander_run() {
 
       enter_dir(panel);
     } else if (ch == 263) { // Backspace
-       exit_dir(panel);
+      exit_dir(panel);
     }
 
     doupdate();
