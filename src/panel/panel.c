@@ -1,4 +1,5 @@
 #include "panel.h"
+#include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -45,17 +46,6 @@ static void truncate_name(char *name, FileType file_type, int max_x) {
   }
 }
 
-static void init_header_gaps(int header_len, int word_len, int *left_gap,
-                             int *right_gap) {
-  if (header_len < word_len) {
-    *left_gap = 1;
-    *right_gap = 1;
-  } else {
-    *left_gap = (header_len - word_len) / 2;
-    *right_gap = header_len - word_len - *left_gap;
-  }
-}
-
 static void truncate_size(char *size, int start_x, int end_x) {
   int size_len = strlen(size);
 
@@ -75,6 +65,17 @@ static void truncate_date(char *date, int start_x, int end_x) {
   if (date_end >= end_x) {
     int diff = date_end - end_x - 1;
     date[date_len - diff - 1] = '\0';
+  }
+}
+
+static void init_header_gaps(int header_len, int word_len, int *left_gap,
+                             int *right_gap) {
+  if (header_len < word_len) {
+    *left_gap = 1;
+    *right_gap = 1;
+  } else {
+    *left_gap = (header_len - word_len) / 2;
+    *right_gap = header_len - word_len - *left_gap;
   }
 }
 
@@ -190,8 +191,8 @@ void display_headers_hborders(Panel *panel) {
   WINDOW *win = panel->win;
   int max_x = get_max_x(win);
 
-  int gap1 = max_x - DATE_COL_WIDTH - SIZE_COL_WIDTH;
-  int gap2 = max_x - DATE_COL_WIDTH;
+  int gap1 = max_x - DATE_COL_WIDTH(max_x) - SIZE_COL_WIDTH(max_x);
+  int gap2 = max_x - DATE_COL_WIDTH(max_x);
   int gap3 = max_x - 1;
 
   printw_hline(win, 1, 2, gap1);
@@ -251,7 +252,7 @@ void display_dir(Panel *panel) {
 
     time_t time = item->mod_time;
     localtime_r(&time, &tm);
-    strftime(datebuf, sizeof(datebuf), "%Y-%m-%d %H:%M:%S", &tm);
+    strftime(datebuf, sizeof(datebuf), "%H:%M:%S %Y-%m-%d", &tm);
     snprintf(sizebuf, sizeof(sizebuf), "%d", size);
 
     int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x);

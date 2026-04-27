@@ -1,4 +1,8 @@
 #include "emperror.h"
+#include <asm-generic/ioctls.h>
+#include <ncurses.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 void commander_run() {
   initscr();
@@ -10,6 +14,7 @@ void commander_run() {
   }
 
   cbreak();
+  use_env(FALSE);
   noecho();
   keypad(stdscr, TRUE);
   start_color();
@@ -41,8 +46,8 @@ void commander_run() {
 
   Panel *panels[] = {&left_panel, &right_panel};
 
-  	getcwd(left_panel.path, sizeof(left_panel.path));
-	getcwd(right_panel.path, sizeof(right_panel.path));
+  getcwd(left_panel.path, sizeof(left_panel.path));
+  getcwd(right_panel.path, sizeof(right_panel.path));
 
   int quantity = load_dir(left_panel.path, left_panel.items, 512);
   left_panel.count = quantity;
@@ -62,13 +67,41 @@ void commander_run() {
   display_dir(&right_panel);
   doupdate();
 
-  char ch;
+  int ch;
   int activePanel = 0;
 
   while ((ch = getch()) != 'q') {
     Panel *panel = panels[activePanel];
 
-    if (ch == 119 && panel->selected_item > 0) { // w
+    if (ch == KEY_RESIZE) {
+      endwin();
+      initscr();
+
+      cbreak();
+      noecho();
+      keypad(stdscr, TRUE);
+      start_color();
+      use_default_colors();
+      curs_set(0);
+
+      clear();
+      refresh();
+
+      left_panel.win = newwin(LINES, COLS / 2, 0, 0);
+      right_panel.win = newwin(LINES, COLS / 2, 0, COLS / 2);
+
+      box(left_win, 0, 0);
+      box(right_win, 0, 0);
+      display_ui(&left_panel);
+      display_ui(&right_panel);
+      display_dir(&left_panel);
+      move_selection(&left_panel, left_panel.selected_item);
+      display_dir(&right_panel);
+
+      wnoutrefresh(left_panel.win);
+      wnoutrefresh(right_panel.win);
+
+    } else if (ch == 'k' && panel->selected_item > 0) { // w //119
       if (get_y(panel->selected_item, PAGE_SIZE) == Y_TOP_OFFSET) {
         panel->selected_item = panel->selected_item - PAGE_SIZE;
         display_dir(panel);
@@ -78,7 +111,8 @@ void commander_run() {
         move_selection(panel, panel->selected_item - 1);
         panel->selected_item--;
       }
-    } else if (ch == 115 && panel->selected_item < panel->count - 1) { // s
+    } else if (ch == 'j' &&
+               panel->selected_item < panel->count - 1) { // s //115
       if (get_y(panel->selected_item, PAGE_SIZE) == Y_BOTTOM_OFFSET) {
         panel->selected_item++;
         display_dir(panel);
@@ -101,8 +135,7 @@ void commander_run() {
     } else if (ch == 10) { // Enter
 
       enter_dir(panel);
-    } else if (ch == 7) { // Backspace
-
+    } else if (ch == 263) { // Backspace
       exit_dir(panel);
     }
 
