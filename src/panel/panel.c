@@ -46,17 +46,28 @@ static void truncate_name(char *name, FileType file_type, int max_x) {
   }
 }
 
-static void truncate_size(char *size, int start_x, int end_x) {
-  int size_len = strlen(size);
-
-  int size_end = start_x + size_len;
-
-  if (size_end >= end_x) {
-    int diff = size_end - end_x - 1;
-    size[size_len - diff - 1] = '\0';
-  }
-}
-
+//static void truncate_size(char *size, int start_x, int end_x) {
+//  int size_len = strlen(size);
+//  int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1;
+//  int diff = abs(size_header_len - size_len);
+//
+//  if (size_len <= size_header_len) {
+//    size_left_gap = diff;
+//  } else if (diff <= 2) {
+//    sizebuf[size_len - 3] = 'K';
+//    sizebuf[size_len - 2] = '\0';
+//    size_left_gap = size_header_len - (size_len - 2);
+//  } else if (diff >= 3 && diff <= 8) {
+//    sizebuf[size_len - 6] = 'M';
+//    sizebuf[size_len - 5] = '\0';
+//    size_left_gap = size_header_len - (size_len - 5);
+//  } else if (diff >= 9 && diff <= 11) {
+//    sizebuf[size_len - 9] = 'G';
+//    sizebuf[size_len - 8] = '\0';
+//    size_left_gap = size_header_len - (size_len - 8);
+//  }
+//}
+//
 static void truncate_date(char *date, int start_x, int end_x) {
   int date_len = strlen(date);
 
@@ -191,8 +202,8 @@ void display_headers_hborders(Panel *panel) {
   WINDOW *win = panel->win;
   int max_x = get_max_x(win);
 
-  int gap1 = max_x - DATE_COL_WIDTH(max_x) - SIZE_COL_WIDTH(max_x);
-  int gap2 = max_x - DATE_COL_WIDTH(max_x);
+  int gap1 = max_x - DATE_COL_WIDTH - SIZE_COL_WIDTH;
+  int gap2 = max_x - DATE_COL_WIDTH;
   int gap3 = max_x - 1;
 
   printw_hline(win, 1, 2, gap1);
@@ -229,14 +240,19 @@ void display_dir(Panel *panel) {
   erase_dir_area(panel);
 
   struct tm tm;
+  time_t now;
+  struct tm local_time;
+  char *time_format;
+
   char datebuf[64];
   char sizebuf[12];
+
+  time(&now);
 
   int max_x = get_max_x(win);
   int max_y = get_max_y(win);
 
   int y = Y_TOP_OFFSET;
-
   int color_pair = get_color_pair(CP_DIR);
 
   for (int i = start; i <= end && i < panel->count; i++) {
@@ -246,37 +262,60 @@ void display_dir(Panel *panel) {
 
     int size = item->size;
 
-    time_t time = item->mod_time;
-    localtime_r(&time, &tm);
-    strftime(datebuf, sizeof(datebuf), "%H:%M:%S %Y-%m-%d", &tm);
+    time_t item_time = item->mod_time;
+    localtime_r(&item_time, &tm);
+    localtime_r(&now, &local_time);
+
+    if (tm.tm_year < local_time.tm_year) {
+      time_format = "%d %b %Y";
+    } else {
+      time_format = "%d %b %H:%M";
+    }
+
+    strftime(datebuf, sizeof(datebuf), time_format, &tm);
     snprintf(sizebuf, sizeof(sizebuf), "%d", size);
 
-    int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x);
+    int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1;
     int date_header_len = DATE_HBORDER(max_x) - SIZE_HBORDER(max_x);
 
     int date_len = strlen(datebuf);
     int size_len = strlen(sizebuf);
 
-    int size_left_gap = 1;
+    int size_left_gap = 0;
     int size_right_gap = 0;
-    // init_header_gaps(size_header_len, size_len, &size_left_gap,
-    //                 &size_right_gap);
 
     int date_left_gap = 0;
     int date_right_gap = 0;
     init_header_gaps(date_header_len, date_len, &date_left_gap,
                      &date_right_gap);
 
-    int size_start_x = NAME_HBORDER(max_x) + size_left_gap;
+    int size_start_x = NAME_HBORDER(max_x) + 1;
     int size_end_x = SIZE_HBORDER(max_x) - size_right_gap;
+
+    int diff = abs(size_header_len - size_len);
+    if (size_len <= size_header_len) {
+      size_left_gap = diff;
+    } else if (diff <= 2) {
+      sizebuf[size_len - 3] = 'K';
+      sizebuf[size_len - 2] = '\0';
+      size_left_gap = size_header_len - (size_len - 2);
+    } else if (diff >= 3 && diff <= 8) {
+      sizebuf[size_len - 6] = 'M';
+      sizebuf[size_len - 5] = '\0';
+      size_left_gap = size_header_len - (size_len - 5);
+    } else if (diff >= 9 && diff <= 11) {
+      sizebuf[size_len - 9] = 'G';
+      sizebuf[size_len - 8] = '\0';
+      size_left_gap = size_header_len - (size_len - 8);
+    }
 
     int date_start_x = SIZE_HBORDER(max_x) + date_left_gap;
     int date_end_x = DATE_HBORDER(max_x) - date_right_gap;
 
-    truncate_size(sizebuf, size_start_x, size_end_x);
+    // truncate_size(sizebuf, size_start_x, size_end_x);
     truncate_date(datebuf, date_start_x, date_end_x);
 
-    printw_str(win, sizebuf, size_start_x, y, "%s");
+    printw_str(win, sizebuf, size_start_x + size_left_gap, y, "%s");
     printw_str(win, datebuf, date_start_x + 1, y, "%s");
 
     y++;

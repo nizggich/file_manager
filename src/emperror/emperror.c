@@ -48,7 +48,10 @@ void commander_run() {
   Panel *panels[] = {&left_panel, &right_panel};
 
   getcwd(left_panel.path, sizeof(left_panel.path));
-   getcwd(right_panel.path, sizeof(right_panel.path));
+  getcwd(right_panel.path, sizeof(right_panel.path));
+
+//  strcpy(right_panel.path, "/bin");
+ // strcpy(left_panel.path, "/bin");
 
   int quantity = load_dir(left_panel.path, left_panel.items, 512);
   left_panel.count = quantity;

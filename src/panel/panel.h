@@ -10,19 +10,16 @@
 #define Y_TOP_OFFSET 3
 #define Y_BOTTOM_OFFSET (LINES - 2)
 
-#define NAME_COL_WIDTH_PERCANTAGE 38
-#define SIZE_COL_WIDTH_PERCENTAGE 22
-#define DATE_COL_WIDTH_PERCENTAGE 40
+// #define NAME_COL_WIDTH_PERCANTAGE 48
+// #define SIZE_COL_WIDTH_PERCENTAGE 12
+// #define DATE_COL_WIDTH_PERCENTAGE 40
 
-#define NAME_COL_WIDTH(columns) ((columns * NAME_COL_WIDTH_PERCENTAGE) / 100)
-#define SIZE_COL_WIDTH(columns) ((columns * SIZE_COL_WIDTH_PERCENTAGE) / 100)
-#define DATE_COL_WIDTH(columns) ((columns * DATE_COL_WIDTH_PERCENTAGE) / 100)
+#define SIZE_COL_WIDTH 6
+#define DATE_COL_WIDTH 15
+#define NAME_COL_WIDTH(columns) (columns - SIZE_COL_WIDTH - DATE_COL_WIDTH)
 
-#define NAME_HBORDER(columns)                                                  \
-  (columns - (columns * DATE_COL_WIDTH_PERCENTAGE / 100) -                     \
-   (columns * SIZE_COL_WIDTH_PERCENTAGE / 100))
-#define SIZE_HBORDER(columns)                                                  \
-  (columns - (columns * DATE_COL_WIDTH_PERCENTAGE / 100))
+#define NAME_HBORDER(columns) (NAME_COL_WIDTH(columns))
+#define SIZE_HBORDER(columns) (columns - DATE_COL_WIDTH)
 #define DATE_HBORDER(columns) (columns - 1)
 
 typedef struct {
