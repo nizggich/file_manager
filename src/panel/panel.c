@@ -46,51 +46,7 @@ static void truncate_name(char *name, FileType file_type, int max_x) {
   }
 }
 
-//static void truncate_size(char *size, int start_x, int end_x) {
-//  int size_len = strlen(size);
-//  int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1;
-//  int diff = abs(size_header_len - size_len);
-//
-//  if (size_len <= size_header_len) {
-//    size_left_gap = diff;
-//  } else if (diff <= 2) {
-//    sizebuf[size_len - 3] = 'K';
-//    sizebuf[size_len - 2] = '\0';
-//    size_left_gap = size_header_len - (size_len - 2);
-//  } else if (diff >= 3 && diff <= 8) {
-//    sizebuf[size_len - 6] = 'M';
-//    sizebuf[size_len - 5] = '\0';
-//    size_left_gap = size_header_len - (size_len - 5);
-//  } else if (diff >= 9 && diff <= 11) {
-//    sizebuf[size_len - 9] = 'G';
-//    sizebuf[size_len - 8] = '\0';
-//    size_left_gap = size_header_len - (size_len - 8);
-//  }
-//}
-//
-static void truncate_date(char *date, int start_x, int end_x) {
-  int date_len = strlen(date);
-
-  int date_end = start_x + date_len;
-
-  if (date_end >= end_x) {
-    int diff = date_end - end_x - 1;
-    date[date_len - diff - 1] = '\0';
-  }
-}
-
-static void init_header_gaps(int header_len, int word_len, int *left_gap,
-                             int *right_gap) {
-  if (header_len < word_len) {
-    *left_gap = 1;
-    *right_gap = 1;
-  } else {
-    *left_gap = (header_len - word_len) / 2;
-    *right_gap = header_len - word_len - *left_gap;
-  }
-}
-
-static void display_dir_item_by_type(WINDOW *win, char *name,
+static void draw_entry_name_internal(WINDOW *win, char *name,
                                      FileType file_type, int y,
                                      bool highlight) {
 
@@ -127,13 +83,52 @@ static void display_dir_item_by_type(WINDOW *win, char *name,
   color_off(win, color_pair);
 }
 
-void display_dir_item(Panel *panel, int item_pos, bool highlight) {
+static void draw_entry_name(Panel *panel, int item_pos, bool highlight) {
   int y = get_y(item_pos, PAGE_SIZE);
 
   FileInfo *file_info = &panel->items[item_pos];
 
-  display_dir_item_by_type(panel->win, file_info->name, file_info->file_type, y,
+  draw_entry_name_internal(panel->win, file_info->name, file_info->file_type, y,
                            highlight);
+}
+
+static void draw_entry_size(WINDOW *win, char *sizebuf, int x, int y) {
+
+  int max_x = get_max_x(win);
+  int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1;
+  int size_len = strlen(sizebuf);
+
+  int size_left_gap = 0;
+
+  int diff = abs(size_header_len - size_len);
+  if (size_len <= size_header_len) {
+    size_left_gap = diff;
+  } else if (diff <= 2) {
+    sizebuf[size_len - 3] = 'K';
+    sizebuf[size_len - 2] = '\0';
+    size_left_gap = size_header_len - (size_len - 2);
+  } else if (diff >= 3 && diff <= 8) {
+    sizebuf[size_len - 6] = 'M';
+    sizebuf[size_len - 5] = '\0';
+    size_left_gap = size_header_len - (size_len - 5);
+  } else if (diff >= 9 && diff <= 11) {
+    sizebuf[size_len - 9] = 'G';
+    sizebuf[size_len - 8] = '\0';
+    size_left_gap = size_header_len - (size_len - 8);
+  }
+
+  printw_str(win, sizebuf, x + size_left_gap, y, "%s");
+}
+
+static void draw_entry_mod_date(WINDOW *win, char *datebuf, int x, int y) {
+  int max_x = get_max_x(win);
+  int date_header_len = DATE_HBORDER(max_x) - SIZE_HBORDER(max_x) - 1;
+  int date_len = strlen(datebuf);
+
+  int date_start_x = SIZE_HBORDER(max_x);
+  int date_end_x = DATE_HBORDER(max_x);
+
+  printw_str(win, datebuf, date_start_x + 1, y, "%s");
 }
 
 void move_selection(Panel *panel, int position) {
@@ -146,15 +141,15 @@ void move_selection(Panel *panel, int position) {
   int old_selection = panel->selected_item;
   int new_selection = position;
 
-  display_dir_item(panel, old_selection, false);
-  display_dir_item(panel, new_selection, true);
+  draw_entry_name(panel, old_selection, false);
+  draw_entry_name(panel, new_selection, true);
 
   refresh_win(panel->win);
 }
 
 void switch_panel(Panel *old_panel, Panel *new_panel) {
-  display_dir_item(old_panel, old_panel->selected_item, false);
-  display_dir_item(new_panel, new_panel->selected_item, true);
+  draw_entry_name(old_panel, old_panel->selected_item, false);
+  draw_entry_name(new_panel, new_panel->selected_item, true);
 
   refresh_win(old_panel->win);
   refresh_win(new_panel->win);
@@ -184,7 +179,7 @@ void erase_dir_area(Panel *panel) {
              Y_BOTTOM_OFFSET);
 }
 
-void display_headers_names(Panel *panel) {
+void draw_headers_names(Panel *panel) {
   WINDOW *win = panel->win;
   int max_x = get_max_x(win);
   int name_x = NAME_HBORDER(max_x) / 2 - 1;
@@ -198,7 +193,7 @@ void display_headers_names(Panel *panel) {
   printw_str(win, "Data", date_x, 1, "%s");
 }
 
-void display_headers_hborders(Panel *panel) {
+void draw_headers_hborders(Panel *panel) {
   WINDOW *win = panel->win;
   int max_x = get_max_x(win);
 
@@ -211,7 +206,7 @@ void display_headers_hborders(Panel *panel) {
   printw_hline(win, gap2 + 1, 2, gap3);
 }
 
-void display_headers_vborders(Panel *panel) {
+void draw_headers_vborders(Panel *panel) {
   WINDOW *win = panel->win;
   int max_x = get_max_x(win);
 
@@ -220,15 +215,15 @@ void display_headers_vborders(Panel *panel) {
   printw_vline(win, DATE_HBORDER(max_x), 1, Y_BOTTOM_OFFSET);
 }
 
-void display_ui(Panel *panel) {
-  display_headers_names(panel);
-  display_headers_hborders(panel);
-  display_headers_vborders(panel);
+void draw_ui(Panel *panel) {
+  draw_headers_names(panel);
+  draw_headers_hborders(panel);
+  draw_headers_vborders(panel);
 
   refresh_win(panel->win);
 }
 
-void display_dir(Panel *panel) {
+void draw_dir(Panel *panel) {
 
   WINDOW *win = panel->win;
   FileInfo *items = panel->items;
@@ -258,9 +253,8 @@ void display_dir(Panel *panel) {
   for (int i = start; i <= end && i < panel->count; i++) {
     FileInfo *item = items + i;
 
-    display_dir_item_by_type(win, item->name, item->file_type, y, false);
-
     int size = item->size;
+    snprintf(sizebuf, sizeof(sizebuf), "%d", size);
 
     time_t item_time = item->mod_time;
     localtime_r(&item_time, &tm);
@@ -273,50 +267,14 @@ void display_dir(Panel *panel) {
     }
 
     strftime(datebuf, sizeof(datebuf), time_format, &tm);
-    snprintf(sizebuf, sizeof(sizebuf), "%d", size);
 
-    int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1;
-    int date_header_len = DATE_HBORDER(max_x) - SIZE_HBORDER(max_x);
-
-    int date_len = strlen(datebuf);
-    int size_len = strlen(sizebuf);
-
-    int size_left_gap = 0;
-    int size_right_gap = 0;
-
-    int date_left_gap = 0;
-    int date_right_gap = 0;
-    init_header_gaps(date_header_len, date_len, &date_left_gap,
-                     &date_right_gap);
+    draw_entry_name_internal(win, item->name, item->file_type, y, false);
 
     int size_start_x = NAME_HBORDER(max_x) + 1;
-    int size_end_x = SIZE_HBORDER(max_x) - size_right_gap;
+    draw_entry_size(win, sizebuf, size_start_x, y);
 
-    int diff = abs(size_header_len - size_len);
-    if (size_len <= size_header_len) {
-      size_left_gap = diff;
-    } else if (diff <= 2) {
-      sizebuf[size_len - 3] = 'K';
-      sizebuf[size_len - 2] = '\0';
-      size_left_gap = size_header_len - (size_len - 2);
-    } else if (diff >= 3 && diff <= 8) {
-      sizebuf[size_len - 6] = 'M';
-      sizebuf[size_len - 5] = '\0';
-      size_left_gap = size_header_len - (size_len - 5);
-    } else if (diff >= 9 && diff <= 11) {
-      sizebuf[size_len - 9] = 'G';
-      sizebuf[size_len - 8] = '\0';
-      size_left_gap = size_header_len - (size_len - 8);
-    }
-
-    int date_start_x = SIZE_HBORDER(max_x) + date_left_gap;
-    int date_end_x = DATE_HBORDER(max_x) - date_right_gap;
-
-    // truncate_size(sizebuf, size_start_x, size_end_x);
-    truncate_date(datebuf, date_start_x, date_end_x);
-
-    printw_str(win, sizebuf, size_start_x + size_left_gap, y, "%s");
-    printw_str(win, datebuf, date_start_x + 1, y, "%s");
+    int date_start_x = SIZE_HBORDER(max_x) + 1;
+    draw_entry_mod_date(win, datebuf, date_start_x, y);
 
     y++;
   }
@@ -336,7 +294,7 @@ void exit_dir(Panel *panel) {
   panel->count = elements;
 
   sort_dir(panel->items, panel->count);
-  display_dir(panel);
+  draw_dir(panel);
 
   panel->selected_item = get_index_dir_by_name(panel, entry_name);
   move_selection(panel, panel->selected_item);
@@ -365,9 +323,9 @@ void enter_dir(Panel *panel) {
     panel->count = elements;
 
     sort_dir(panel->items, panel->count);
-    display_dir(panel);
+    draw_dir(panel);
 
-    display_dir(panel);
+    draw_dir(panel);
     move_selection(panel, panel->selected_item);
 
   } else {

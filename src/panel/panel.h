@@ -15,7 +15,7 @@
 // #define DATE_COL_WIDTH_PERCENTAGE 40
 
 #define SIZE_COL_WIDTH 6
-#define DATE_COL_WIDTH 15
+#define DATE_COL_WIDTH 14
 #define NAME_COL_WIDTH(columns) (columns - SIZE_COL_WIDTH - DATE_COL_WIDTH)
 
 #define NAME_HBORDER(columns) (NAME_COL_WIDTH(columns))
@@ -39,8 +39,8 @@ void exit_dir(Panel *panel);
 void enter_dir(Panel *panel);
 int get_index_dir_by_name(Panel *panel, char *dir_name);
 
-void display_ui(Panel *panel);
-void display_headers_hborders(Panel *panel);
-void display_headers_vborders(Panel *panel);
-void display_dir(Panel *panel);
-void display_dir_item(Panel *panel, int selected_item, bool highlight);
+void draw_ui(Panel *panel);
+void draw_headers_names(Panel *panel);
+void draw_headers_hborders(Panel *panel);
+void draw_headers_vborders(Panel *panel);
+void draw_dir(Panel *panel);
