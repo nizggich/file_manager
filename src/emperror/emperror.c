@@ -149,8 +149,47 @@ void commander_run() {
       panels[activePanel]->active = true;
 
       switch_panel(panel, panels[activePanel]);
-    } else if (ch == 10) { // Enter
+    } else if (ch == 'K') { // page up
+      int selected_item = panel->selected_item;
 
+      int current_page = selected_item / PAGE_SIZE;
+      int first_page = 0;
+
+      if (current_page == first_page) {
+        continue;
+      }
+
+      int new_selected_item = selected_item - PAGE_SIZE;
+      panel->selected_item = new_selected_item;
+
+      draw_dir(panel);
+      move_selection(panel, panel->selected_item);
+
+    } else if (ch == 'J') { // page down
+      int selected_item = panel->selected_item;
+
+      int current_page = selected_item / PAGE_SIZE;
+      int last_page = (panel->count - 1) / PAGE_SIZE;
+
+      if (current_page == last_page) {
+        continue;
+      }
+
+      int new_selected_item = selected_item + PAGE_SIZE;
+      if (new_selected_item > panel->count - 1) {
+        int current_entry_y = get_y(selected_item, PAGE_SIZE);
+        int last_entry_y = get_y(panel->count - 1, PAGE_SIZE);
+
+        new_selected_item = selected_item +
+                            (PAGE_SIZE - current_entry_y - Y_TOP_OFFSET + 1) +
+                            ((last_entry_y - Y_TOP_OFFSET + 1) / 2);
+      }
+
+      panel->selected_item = new_selected_item;
+      draw_dir(panel);
+      move_selection(panel, panel->selected_item);
+
+    } else if (ch == 10) { // Enter
       enter_dir(panel);
     } else if (ch == 263) { // Backspace
       exit_dir(panel);

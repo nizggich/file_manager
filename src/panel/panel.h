@@ -14,7 +14,7 @@
 // #define SIZE_COL_WIDTH_PERCENTAGE 12
 // #define DATE_COL_WIDTH_PERCENTAGE 40
 
-#define SIZE_COL_WIDTH 6
+#define SIZE_COL_WIDTH 6 
 #define DATE_COL_WIDTH 14
 #define NAME_COL_WIDTH(columns) (columns - SIZE_COL_WIDTH - DATE_COL_WIDTH)
 
