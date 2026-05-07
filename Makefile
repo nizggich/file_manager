@@ -12,7 +12,7 @@ build:
 	$(CC) $(SRCS) -l$(LIBS) -g -O0 -o $(TARGET)
  
 debug:build
-	gdb ./$(TARGET) 
+	gdb -q ./$(TARGET) 
 	
 run: build	
 	./$(TARGET)

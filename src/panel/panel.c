@@ -1,7 +1,114 @@
 #include "panel.h"
+#include <dirent.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
+
+extern int term_width, term_hight;
+
+static ColumnDef cols[] = {
+    {"Name", 15, 8, 0, 50, 2},
+    {"Size", 6, 4, 0, 8, 1},
+    {"Modify time", 12, 5, 0, 16, 1},
+};
+
+static int cols_size = sizeof(cols) / sizeof(cols[0]);
+
+void scale_interface() {
+  int padding = 2;
+  int dividing_lines = 2;
+
+  int columns_space = 0;
+  for (int i = 0; i < cols_size; i++) {
+    columns_space += cols[i].desired_width;
+    cols[i].width = cols[i].desired_width;
+  }
+
+  int ocuppied_space = padding + dividing_lines + columns_space;
+  int available_space = term_width / 2 - ocuppied_space;
+
+  if (available_space == 0) {
+    return;
+  } else if (available_space > 0) {
+    cols[NAME].width = cols[NAME].desired_width + available_space;
+
+  } else if (available_space < 0) {
+    int lack = abs(available_space);
+
+    int name_diff = cols[NAME].desired_width - cols[NAME].min_width;
+
+    if (lack - name_diff <= 0) {
+      cols[NAME].width = cols[NAME].min_width + abs(lack - name_diff);
+      return;
+    }
+
+    bool scaled = false;
+    for (int i = 0; i < cols_size; i++) {
+      ColumnDef *col = &cols[i];
+      int new_width = col->desired_width;
+
+      while (lack > 0 && new_width > col->min_width) {
+        new_width--;
+        lack--;
+      }
+
+      col->width = new_width;
+
+      if (lack <= 0) {
+        scaled = true;
+        break;
+      }
+    }
+
+    if (!scaled) {
+      for (int i = 1; i < cols_size; i++) {
+        ColumnDef *col = &cols[i];
+
+        int width = col->width;
+        col->width = 0;
+
+        lack -= (width + 1);
+
+        if (lack <= 0) {
+          cols[NAME].width += abs(lack);
+          scaled = true;
+          break;
+        }
+      }
+    }
+
+    if (!scaled) {
+      cols[NAME].width = cols[NAME].width - lack;
+    }
+  }
+}
+
+static int get_vborder_x(ColumnDef *col, ColumnDef *cols) {
+  int i = 0;
+  int vborder_x = col->width + 1;
+
+  while (strcmp(col->header, cols[i].header) != 0) {
+    vborder_x += (cols[i].width + 1);
+    i++;
+  }
+
+  return vborder_x;
+}
+
+static int get_header_x(ColumnDef *col, ColumnDef *cols) {
+  int header_x = 0;
+  int vborder_x = get_vborder_x(col, cols);
+
+  if (strcmp(col->header, "Name") == 0) {
+    header_x = (vborder_x - 1) / 2 - 1;
+  } else {
+    int start_zone_x = vborder_x - col->width;
+    int left_gap = col->width - strlen(col->header);
+    header_x = start_zone_x + left_gap;
+  }
+
+  return header_x;
+}
 
 static int get_color_pair(FileType file_type) {
   switch (file_type) {
@@ -23,7 +130,7 @@ static int get_color_pair(FileType file_type) {
 static void truncate_name(char *name, FileType file_type, int max_x) {
 
   int name_len = strlen(name);
-  int name_hborder = NAME_HBORDER(max_x);
+  int name_hborder = get_vborder_x(&cols[NAME], cols);
   int diff = 0;
 
   switch (file_type) {
@@ -93,9 +200,7 @@ static void draw_entry_name(Panel *panel, int item_pos, bool highlight) {
 }
 
 static void draw_entry_size(WINDOW *win, char *sizebuf, int x, int y) {
-
-  int max_x = get_max_x(win);
-  int size_header_len = SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1;
+  int size_header_len = cols[SIZE].width;
   int size_len = strlen(sizebuf);
 
   int size_left_gap = 0;
@@ -121,14 +226,31 @@ static void draw_entry_size(WINDOW *win, char *sizebuf, int x, int y) {
 }
 
 static void draw_entry_mod_date(WINDOW *win, char *datebuf, int x, int y) {
-  int max_x = get_max_x(win);
-  int date_header_len = DATE_HBORDER(max_x) - SIZE_HBORDER(max_x) - 1;
+  int date_header_len = cols[MOD_TIME].width;
   int date_len = strlen(datebuf);
 
-  int date_start_x = SIZE_HBORDER(max_x);
-  int date_end_x = DATE_HBORDER(max_x);
+  int diff = date_header_len - date_len;
 
-  printw_str(win, datebuf, date_start_x + 1, y, "%s");
+  if (diff < 0) {
+
+    int new_date_len = 0;
+    int offset = 0;
+
+    if (diff >= -3) {
+      new_date_len = date_len - 3;
+      offset = 3;
+    } else {
+      diff = abs(diff);
+      new_date_len = date_len - diff;
+      offset = diff;
+    }
+
+    char truncate_date[new_date_len];
+    memcpy(datebuf, &datebuf[offset], sizeof(char) * new_date_len);
+    datebuf[new_date_len] = '\0';
+  }
+
+  printw_str(win, datebuf, x, y, "%s");
 }
 
 void move_selection(Panel *panel, int position) {
@@ -170,49 +292,53 @@ void erase_dir_area(Panel *panel) {
   WINDOW *win = panel->win;
   int max_x = get_max_x(win);
 
-  erase_area(win, 1, NAME_HBORDER(max_x) - 1, Y_TOP_OFFSET, Y_BOTTOM_OFFSET);
-  erase_area(win, NAME_HBORDER(max_x) + 1,
-             SIZE_HBORDER(max_x) - NAME_HBORDER(max_x) - 1, Y_TOP_OFFSET,
-             Y_BOTTOM_OFFSET);
-  erase_area(win, SIZE_HBORDER(max_x) + 1,
-             DATE_HBORDER(max_x) - SIZE_HBORDER(max_x) - 1, Y_TOP_OFFSET,
-             Y_BOTTOM_OFFSET);
+  int name_vborder = get_vborder_x(&cols[NAME], cols);
+  int size_vborder = get_vborder_x(&cols[SIZE], cols);
+  int mod_time_vborder = get_vborder_x(&cols[MOD_TIME], cols);
+
+  erase_area(win, 1, name_vborder - 1, Y_TOP_OFFSET, Y_BOTTOM_OFFSET);
+  erase_area(win, name_vborder + 1, size_vborder - name_vborder - 1,
+             Y_TOP_OFFSET, Y_BOTTOM_OFFSET);
+  erase_area(win, size_vborder + 1, mod_time_vborder - size_vborder - 1,
+             Y_TOP_OFFSET, Y_BOTTOM_OFFSET);
 }
 
 void draw_headers_names(Panel *panel) {
   WINDOW *win = panel->win;
-  int max_x = get_max_x(win);
-  int name_x = NAME_HBORDER(max_x) / 2 - 1;
-  int size_x =
-      NAME_HBORDER(max_x) + (SIZE_HBORDER(max_x) - NAME_HBORDER(max_x)) / 2 - 1;
-  int date_x =
-      SIZE_HBORDER(max_x) + (DATE_HBORDER(max_x) - SIZE_HBORDER(max_x)) / 2 - 2;
-
-  printw_str(win, "Name", name_x, 1, "%s");
-  printw_str(win, "Size", size_x, 1, "%s");
-  printw_str(win, "Data", date_x, 1, "%s");
+  for (int i = 0; i < cols_size; i++) {
+    ColumnDef *col = &cols[i];
+    if (col->width != 0) {
+      printw_str(win, col->header, get_header_x(col, cols), 1, "%s");
+    }
+  }
 }
 
 void draw_headers_hborders(Panel *panel) {
   WINDOW *win = panel->win;
-  int max_x = get_max_x(win);
+  int x = 1;
+  int length = 0;
 
-  int gap1 = max_x - DATE_COL_WIDTH - SIZE_COL_WIDTH;
-  int gap2 = max_x - DATE_COL_WIDTH;
-  int gap3 = max_x - 1;
+  for (int i = 0; i < cols_size; i++) {
+    ColumnDef *col = &cols[i];
 
-  printw_hline(win, 1, 2, gap1);
-  printw_hline(win, gap1 + 1, 2, gap2);
-  printw_hline(win, gap2 + 1, 2, gap3);
+    if (col->width != 0) {
+      int vborder_x = get_vborder_x(col, cols);
+      printw_hline(win, x, 2, vborder_x);
+      length += vborder_x;
+    }
+  }
 }
 
 void draw_headers_vborders(Panel *panel) {
   WINDOW *win = panel->win;
-  int max_x = get_max_x(win);
 
-  printw_vline(win, NAME_HBORDER(max_x), 1, Y_BOTTOM_OFFSET);
-  printw_vline(win, SIZE_HBORDER(max_x), 1, Y_BOTTOM_OFFSET);
-  printw_vline(win, DATE_HBORDER(max_x), 1, Y_BOTTOM_OFFSET);
+  for (int i = 0; i < cols_size; i++) {
+    ColumnDef *col = &cols[i];
+
+    if (col->width != 0) {
+      printw_vline(win, get_vborder_x(col, cols), 1, Y_BOTTOM_OFFSET);
+    }
+  }
 }
 
 void draw_ui(Panel *panel) {
@@ -263,18 +389,22 @@ void draw_dir(Panel *panel) {
     if (tm.tm_year < local_time.tm_year) {
       time_format = "%d %b %Y";
     } else {
-      time_format = "%d %b %H:%M";
+      time_format = "%b %d %H:%M";
     }
 
     strftime(datebuf, sizeof(datebuf), time_format, &tm);
 
     draw_entry_name_internal(win, item->name, item->file_type, y, false);
 
-    int size_start_x = NAME_HBORDER(max_x) + 1;
-    draw_entry_size(win, sizebuf, size_start_x, y);
+    if (cols[SIZE].width > 0) {
+      int size_start_x = get_vborder_x(&cols[NAME], cols) + 1;
+      draw_entry_size(win, sizebuf, size_start_x, y);
+    }
 
-    int date_start_x = SIZE_HBORDER(max_x) + 1;
-    draw_entry_mod_date(win, datebuf, date_start_x, y);
+    if (cols[MOD_TIME].width > 0) {
+      int date_start_x = get_vborder_x(&cols[SIZE], cols) + 1;
+      draw_entry_mod_date(win, datebuf, date_start_x, y);
+    }
 
     y++;
   }

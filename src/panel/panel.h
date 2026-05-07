@@ -14,13 +14,24 @@
 // #define SIZE_COL_WIDTH_PERCENTAGE 12
 // #define DATE_COL_WIDTH_PERCENTAGE 40
 
-#define SIZE_COL_WIDTH 6 
+#define SIZE_COL_WIDTH 6
 #define DATE_COL_WIDTH 14
 #define NAME_COL_WIDTH(columns) (columns - SIZE_COL_WIDTH - DATE_COL_WIDTH)
 
 #define NAME_HBORDER(columns) (NAME_COL_WIDTH(columns))
 #define SIZE_HBORDER(columns) (columns - DATE_COL_WIDTH)
 #define DATE_HBORDER(columns) (columns - 1)
+
+typedef enum { NAME, SIZE, MOD_TIME } ColumnType;
+
+typedef struct {
+  char *header;
+  int desired_width;
+  int min_width;
+  int width;
+  int max_width;
+  int weight;
+} ColumnDef;
 
 typedef struct {
   char path[512]; // mb pointer a ne sam massiv
@@ -44,3 +55,4 @@ void draw_headers_names(Panel *panel);
 void draw_headers_hborders(Panel *panel);
 void draw_headers_vborders(Panel *panel);
 void draw_dir(Panel *panel);
+void scale_interface(void);
