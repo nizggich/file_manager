@@ -5,22 +5,12 @@
 #include <time.h>
 #include <unistd.h>
 
-#define PAGE_SIZE (LINES - 4)
+extern int term_width, term_height;
+
+#define PAGE_SIZE (term_height - 4)
 
 #define Y_TOP_OFFSET 3
-#define Y_BOTTOM_OFFSET (LINES - 2)
-
-// #define NAME_COL_WIDTH_PERCANTAGE 48
-// #define SIZE_COL_WIDTH_PERCENTAGE 12
-// #define DATE_COL_WIDTH_PERCENTAGE 40
-
-#define SIZE_COL_WIDTH 6
-#define DATE_COL_WIDTH 14
-#define NAME_COL_WIDTH(columns) (columns - SIZE_COL_WIDTH - DATE_COL_WIDTH)
-
-#define NAME_HBORDER(columns) (NAME_COL_WIDTH(columns))
-#define SIZE_HBORDER(columns) (columns - DATE_COL_WIDTH)
-#define DATE_HBORDER(columns) (columns - 1)
+#define Y_BOTTOM_OFFSET (term_height - 2)
 
 typedef enum { NAME, SIZE, MOD_TIME } ColumnType;
 

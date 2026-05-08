@@ -1,10 +1,9 @@
 #include "panel.h"
-#include <dirent.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <string.h>
 
-extern int term_width, term_hight;
+extern int term_width, term_height;
 
 static ColumnDef cols[] = {
     {"Name", 15, 8, 0, 50, 2},
