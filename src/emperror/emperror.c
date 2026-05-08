@@ -5,6 +5,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+int term_width, term_height;
+
 void commander_run() {
   initscr();
 
@@ -30,10 +32,18 @@ void commander_run() {
   clear();
   refresh();
 
-  int height, width;
-  getmaxyx(stdscr, height, width);
-  WINDOW *left_win = newwin(LINES, COLS / 2, 0, 0);
-  WINDOW *right_win = newwin(LINES, COLS / 2, 0, COLS / 2);
+  struct winsize w;
+
+  if (ioctl(STDIN_FILENO, TIOCGWINSZ, &w) == 0) {
+    term_width = w.ws_col;
+    term_height = w.ws_row; // if error just exit
+  } else {
+    term_width = COLS;
+    term_height = LINES;
+  }
+
+  WINDOW *left_win = newwin(term_height, term_width / 2, 0, 0);
+  WINDOW *right_win = newwin(term_height, term_width / 2, 0, term_width / 2);
 
   Panel right_panel = {0};
   Panel left_panel = {0};
@@ -64,11 +74,14 @@ void commander_run() {
 
   box(left_win, 0, 0);
   box(right_win, 0, 0);
+  scale_interface();
   draw_ui(&left_panel);
   draw_ui(&right_panel);
   draw_dir(&left_panel);
   move_selection(&left_panel, left_panel.selected_item);
   draw_dir(&right_panel);
+  wnoutrefresh(left_panel.win);
+  wnoutrefresh(right_panel.win);
   doupdate();
 
   int ch;
@@ -91,8 +104,15 @@ void commander_run() {
       clear();
       refresh();
 
-      left_panel.win = newwin(LINES, COLS / 2, 0, 0);
-      right_panel.win = newwin(LINES, COLS / 2, 0, COLS / 2);
+      if (ioctl(STDIN_FILENO, TIOCGWINSZ, &w) == 0) {
+        term_width = w.ws_col;
+        term_height = w.ws_row;
+      }
+
+      left_panel.win = newwin(term_height, term_width / 2, 0, 0);
+      right_panel.win = newwin(term_height, term_width / 2, 0, term_width / 2);
+
+      scale_interface();
 
       box(left_panel.win, 0, 0);
       box(right_panel.win, 0, 0);
