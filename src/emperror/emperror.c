@@ -24,10 +24,10 @@ void commander_run() {
   use_default_colors();
   curs_set(0);
 
-  init_pair(1, COLOR_WHITE, COLOR_BLACK);
-  init_pair(2, COLOR_GREEN, COLOR_BLACK);
-  init_pair(3, COLOR_RED, COLOR_BLACK);
-  init_pair(4, COLOR_BLUE, COLOR_WHITE);
+  init_pair(CP_DIR, COLOR_WHITE, COLOR_BLACK);
+  init_pair(CP_EXE_SCR, COLOR_GREEN, COLOR_BLACK);
+  init_pair(CP_EXE_BIN, COLOR_RED, COLOR_BLACK);
+  init_pair(CP_SELECTED_ITEM, COLOR_BLUE, COLOR_WHITE);
 
   clear();
   refresh();
@@ -59,9 +59,6 @@ void commander_run() {
 
   getcwd(left_panel.path, sizeof(left_panel.path));
   getcwd(right_panel.path, sizeof(right_panel.path));
-
-  //  strcpy(right_panel.path, "/bin");
-  // strcpy(left_panel.path, "/bin");
 
   int quantity = load_dir(left_panel.path, left_panel.items, 512);
   left_panel.count = quantity;
@@ -121,21 +118,22 @@ void commander_run() {
       draw_ui(&right_panel);
       draw_dir(&left_panel);
       draw_dir(&right_panel);
-      move_selection(panel, panel->selected_item);
+      toggle_highlight(&left_panel, true);
 
       wnoutrefresh(left_panel.win);
       wnoutrefresh(right_panel.win);
       doupdate();
 
     } else if (ch == 'k' && panel->selected_item > 0) { // w //119
+      int new_pos = 0;
       if (get_y(panel->selected_item, PAGE_SIZE) == Y_TOP_OFFSET) {
         panel->selected_item = panel->selected_item - PAGE_SIZE;
         draw_dir(panel);
-        panel->selected_item = panel->selected_item + (PAGE_SIZE - 1) / 2;
-        move_selection(panel, panel->selected_item);
+        new_pos = panel->selected_item + (PAGE_SIZE - 1) / 2;
+        move_selection(panel, new_pos);
       } else {
-        move_selection(panel, panel->selected_item - 1);
-        panel->selected_item--;
+        new_pos = panel->selected_item - 1;
+        move_selection(panel, new_pos);
       }
     } else if (ch == 'j' &&
                panel->selected_item < panel->count - 1) { // s //115
@@ -152,12 +150,9 @@ void commander_run() {
         } else {
           new_selected_item = panel->selected_item + (PAGE_SIZE - 1) / 2;
         }
-
-        panel->selected_item = new_selected_item;
-        move_selection(panel, panel->selected_item);
+        move_selection(panel, new_selected_item);
       } else {
         move_selection(panel, panel->selected_item + 1);
-        panel->selected_item++;
       }
     } else if (ch == 9) { // Tab
       if (activePanel == PANEL_COUNT - 1)
@@ -183,8 +178,7 @@ void commander_run() {
       panel->selected_item = new_selected_item;
 
       draw_dir(panel);
-      move_selection(panel, panel->selected_item);
-
+      toggle_highlight(panel, true);
     } else if (ch == 'J') { // page down
       int selected_item = panel->selected_item;
 
@@ -207,8 +201,7 @@ void commander_run() {
 
       panel->selected_item = new_selected_item;
       draw_dir(panel);
-      move_selection(panel, panel->selected_item);
-
+      toggle_highlight(panel, true);
     } else if (ch == 10) { // Enter
       enter_dir(panel);
     } else if (ch == 263) { // Backspace

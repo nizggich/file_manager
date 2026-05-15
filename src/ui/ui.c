@@ -20,9 +20,14 @@ void erase_area(WINDOW *win, int x1, int x2, int y1, int y2) {
   }
 }
 
-void printw_str(WINDOW *win, char *val, int x, int y,
-                char *format) { // poprav format
-  mvwprintw(win, y, x, format, val);
+void printw_str(WINDOW *win, char *val, int x, int y) {
+  mvwprintw(win, y, x, "%s", val);
+}
+
+void printw_color_str(WINDOW *win, char *val, int attr, int x, int y) {
+  color_on(win, attr);
+  printw_str(win, val, x, y);
+  color_off(win, attr);
 }
 
 void printw_int(WINDOW *win, int val, int x, int y) {
