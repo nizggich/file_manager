@@ -1,6 +1,7 @@
 #include "../fs/fs.h"
 #include "../ui/ui.h"
 #include "../utils/utils.h"
+#include <ncurses.h>
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
@@ -8,11 +9,20 @@
 extern int term_width, term_height;
 
 #define PAGE_SIZE (term_height - 4)
-
 #define Y_TOP_OFFSET 3
 #define Y_BOTTOM_OFFSET (term_height - 2)
 
 typedef enum { NAME, SIZE, MOD_TIME } ColumnType;
+
+typedef struct {
+  char *name;
+  char *size;
+  char *mod_time;
+  FileType file_type;
+  bool is_selected;
+} PanelEntry;
+
+typedef void (*ColumnRender)(WINDOW *, PanelEntry *, int, int);
 
 typedef struct {
   char *header;
@@ -21,6 +31,7 @@ typedef struct {
   int width;
   int max_width;
   int weight;
+  ColumnRender column_render;
 } ColumnDef;
 
 typedef struct {
@@ -34,6 +45,7 @@ typedef struct {
 
 void move_selection(Panel *panel, int position);
 void switch_panel(Panel *old_panel, Panel *new_panel);
+void toggle_highlight(Panel *panel, bool highlight);
 
 void erase_dir_area(Panel *panel);
 void exit_dir(Panel *panel);
