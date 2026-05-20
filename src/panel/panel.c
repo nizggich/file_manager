@@ -302,7 +302,7 @@ void draw_headers_vborders(Panel *panel) {
   }
 }
 
-void draw_ui(Panel *panel) {
+void draw_columns_ui(Panel *panel) {
   draw_headers_names(panel);
   draw_headers_hborders(panel);
   draw_headers_vborders(panel);
@@ -372,6 +372,12 @@ void draw_dir(Panel *panel) {
   refresh_win(win);
 }
 
+void draw_ui(Panel *panel) {
+  draw_columns_ui(panel);
+  draw_dir(panel);
+  refresh_win(panel->win);
+}
+
 void exit_dir(Panel *panel) {
 
   char entry_name[128];
@@ -417,9 +423,7 @@ void enter_dir(Panel *panel) {
     sort_dir(panel->items, panel->count);
     draw_dir(panel);
 
-    draw_dir(panel);
     toggle_highlight(panel, true);
-
   } else {
     def_prog_mode();
     endwin();
@@ -432,6 +436,76 @@ void enter_dir(Panel *panel) {
   }
 
   refresh_win(panel->win);
+}
+
+void load_sorted_dir(Panel *panel) {
+  int elements = load_dir(panel->path, panel->items, 512);
+  panel->count = elements;
+  sort_dir(panel->items, panel->count);
+}
+
+WINDOW *create_popup_win(char *title) {
+  int title_len = strlen(title);
+  int borders = 2;
+
+  int popup_width =
+      term_width / 2 >= title_len ? term_width / 2 : title_len - borders;
+  int popup_y = term_height / 3 >= 3 ? term_height / 3 : 3;
+
+  int left_gap = (term_width - popup_width) / 2;
+  WINDOW *popup_win = newwin(4, popup_width, popup_y, left_gap);
+
+  int title_pos = (popup_width / 2) - title_len / 2;
+  if (title_pos < 1) {
+    title_pos = 1;
+  }
+  box(popup_win, 0, 0);
+  mvwprintw(popup_win, 1, title_pos, "%s", title);
+
+  return popup_win;
+}
+
+void handle_win_input(WINDOW *win, char *input_buf, int size) {
+  noecho();
+
+  int win_width = getmaxx(win);
+
+  int ch = 0;
+  int i = -1;
+  int curs_pos = 0;
+
+  while ((ch = wgetch(win)) != '\n' && i != size - 2) {
+    if (ch == 127) {
+      if (i >= 0 && curs_pos > 0) {
+        input_buf[i] = '\0';
+        mvwprintw(win, 2, curs_pos, "%c", ' ');
+        i--;
+        curs_pos--;
+      } else if (i > 0 && curs_pos <= 0) {
+        int start = i - (win_width - 3);
+        char prev_str[win_width - 2];
+        strncpy(prev_str, &input_buf[start], win_width - 2);
+        prev_str[win_width - 2] = '\0';
+        mvwprintw(win, 2, 1, "%s", prev_str);
+        curs_pos = win_width - 2;
+      }
+      continue;
+    }
+
+    if (curs_pos == win_width - 2) {
+      mvwhline(win, 2, 1, ' ', win_width - 1);
+      refresh();
+      curs_pos = 0;
+    }
+
+    i++;
+    curs_pos++;
+    input_buf[i] = ch;
+
+    mvwprintw(win, 2, curs_pos, "%c", ch);
+    box(win, 0, 0);
+  }
+  input_buf[i + 1] = '\0';
 }
 
 void scale_interface() {

@@ -3,9 +3,11 @@
 #include <ncurses.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 int term_width, term_height;
+bool iLoveColors = false;
 
 void commander_run() {
   initscr();
@@ -28,6 +30,9 @@ void commander_run() {
   init_pair(CP_EXE_SCR, COLOR_GREEN, COLOR_BLACK);
   init_pair(CP_EXE_BIN, COLOR_RED, COLOR_BLACK);
   init_pair(CP_SELECTED_ITEM, COLOR_BLUE, COLOR_WHITE);
+
+  init_color(COLOR_MAGENTA, 1000, 500, 0);
+  init_pair(8, COLOR_MAGENTA, -1);
 
   clear();
   refresh();
@@ -60,26 +65,17 @@ void commander_run() {
   getcwd(left_panel.path, sizeof(left_panel.path));
   getcwd(right_panel.path, sizeof(right_panel.path));
 
-  int quantity = load_dir(left_panel.path, left_panel.items, 512);
-  left_panel.count = quantity;
-
-  quantity = load_dir(right_panel.path, right_panel.items, 512);
-  right_panel.count = quantity;
-
-  sort_dir(left_panel.items, left_panel.count);
-  sort_dir(right_panel.items, right_panel.count);
+  load_sorted_dir(&left_panel);
+  load_sorted_dir(&right_panel);
 
   box(left_win, 0, 0);
   box(right_win, 0, 0);
   scale_interface();
   draw_ui(&left_panel);
   draw_ui(&right_panel);
-  draw_dir(&left_panel);
-  move_selection(&left_panel, left_panel.selected_item);
-  draw_dir(&right_panel);
-  wnoutrefresh(left_panel.win);
-  wnoutrefresh(right_panel.win);
-  doupdate();
+  toggle_highlight(&left_panel, true);
+  wrefresh(left_panel.win);
+  wrefresh(right_panel.win);
 
   int ch;
   int activePanel = 0;
@@ -116,14 +112,60 @@ void commander_run() {
 
       draw_ui(&left_panel);
       draw_ui(&right_panel);
-      draw_dir(&left_panel);
-      draw_dir(&right_panel);
       toggle_highlight(&left_panel, true);
 
       wnoutrefresh(left_panel.win);
       wnoutrefresh(right_panel.win);
-      doupdate();
 
+    } else if (ch == 'd') {
+      WINDOW *popup_win = create_popup_win("Enter dir name");
+      wrefresh(popup_win);
+
+      int popup_width;
+      getmaxx(popup_win);
+
+      char input_string[80];
+      handle_win_input(popup_win, input_string, 80);
+
+      char result[82];
+      append_path_segment(panel->path, input_string, result, 82);
+
+      int status = mkdir(result, 0755);
+
+      if (!status) {
+        mvwprintw(popup_win, 2, 1, "%s", "Can't create dir");
+      }
+
+      load_sorted_dir(panel);
+      draw_ui(panel);
+      toggle_highlight(panel, true);
+      box(panel->win, 0, 0);
+      wrefresh(panel->win);
+
+      int second_index =
+          activePanel == PANEL_COUNT - 1 ? activePanel - 1 : activePanel + 1;
+      Panel *second_panel = panels[second_index];
+      load_sorted_dir(second_panel);
+      draw_ui(second_panel);
+      box(second_panel->win, 0, 0);
+      wrefresh(second_panel->win);
+
+      delwin(popup_win);
+      ch = 0;
+    } else if (ch == 'f') {
+      WINDOW *popup_win = create_popup_win("Enter file name");
+      wrefresh(popup_win);
+
+      int popup_width;
+      getmaxx(popup_win);
+
+      char input_string[80];
+      handle_win_input(popup_win, input_string, 80);
+
+      char result[82];
+      append_path_segment(panel->path, input_string, result, 82);
+
+      delwin(popup_win);
     } else if (ch == 'k' && panel->selected_item > 0) { // w //119
       int new_pos = 0;
       if (get_y(panel->selected_item, PAGE_SIZE) == Y_TOP_OFFSET) {
