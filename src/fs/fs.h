@@ -1,5 +1,6 @@
 #include "../qsort/qsort.h"
 #include <dirent.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <sys/stat.h>
 

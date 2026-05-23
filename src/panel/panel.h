@@ -50,9 +50,13 @@ void toggle_highlight(Panel *panel, bool highlight);
 void erase_dir_area(Panel *panel);
 void exit_dir(Panel *panel);
 void enter_dir(Panel *panel);
+void load_sorted_dir(Panel *panel);
+WINDOW *create_popup_win(char *title);
+void handle_win_input(WINDOW *win, char *input_buf, int size);
 int get_index_dir_by_name(Panel *panel, char *dir_name);
 
 void draw_ui(Panel *panel);
+void draw_columns_ui(Panel *panel);
 void draw_headers_names(Panel *panel);
 void draw_headers_hborders(Panel *panel);
 void draw_headers_vborders(Panel *panel);
