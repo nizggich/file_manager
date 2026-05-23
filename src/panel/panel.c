@@ -75,13 +75,15 @@ static int append_name_prefix(char *name, FileType file_type,
   case FILE_TYPE_DIRECTORY:
     ch = '/';
     break;
+  case FILE_TYPE_LNK:
+    ch = '~';
+    break;
   case FILE_TYPE_EXECUTABLE_BINARY:
     ch = '@';
     break;
   case FILE_TYPE_EXECUTABLE_SCRIPT:
     ch = '*';
     break;
-  case FILE_TYPE_TEXT_PLAIN:
   case FILE_TYPE_BINARY_DATA:
     ch = ' ';
     break;
@@ -110,6 +112,7 @@ static void truncate_name(char *name, int x) {
 static int get_color_pair(FileType file_type) {
   switch (file_type) {
   case FILE_TYPE_DIRECTORY:
+  case FILE_TYPE_LNK:
     return COLOR_PAIR(CP_DIR) | A_BOLD;
     break;
   case FILE_TYPE_EXECUTABLE_SCRIPT:
@@ -119,7 +122,6 @@ static int get_color_pair(FileType file_type) {
     return COLOR_PAIR(CP_EXE_BIN);
     break;
   case FILE_TYPE_BINARY_DATA:
-  case FILE_TYPE_TEXT_PLAIN:
   default:
     return COLOR_PAIR(CP_BIN_DATA);
   }
@@ -410,11 +412,7 @@ void enter_dir(Panel *panel) {
       return;
     }
 
-    char result[2048]; // TO DO: check append_path_segment
-    strcpy(result, panel->path);
-    append_path_segment(panel->path, fileInfo->name, result, 2048);
-    strcpy(panel->path, result);
-
+    append_path_segment(panel->path, fileInfo->name, panel->path, 2048);
     panel->selected_item = 0;
 
     int elements = load_dir(panel->path, panel->items, 512);

@@ -112,7 +112,7 @@ void commander_run() {
 
       draw_ui(&left_panel);
       draw_ui(&right_panel);
-      toggle_highlight(&left_panel, true);
+      toggle_highlight(panel, true);
 
       wnoutrefresh(left_panel.win);
       wnoutrefresh(right_panel.win);
