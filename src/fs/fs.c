@@ -1,9 +1,11 @@
 #include "fs.h"
+#include <dirent.h>
+#include <sys/stat.h>
 
 bool is_dir(const FileInfo *file_info) {
-  if (file_info->mode != 0 && S_ISDIR(file_info->mode)) {
+  FileType ft = file_info->file_type;
+  if (ft == FILE_TYPE_DIRECTORY || ft == FILE_TYPE_LNK)
     return true;
-  }
   return false;
 }
 
@@ -24,61 +26,53 @@ int cmp_dir(const void *a, const void *b) {
   return -1;
 }
 
-// bool is_text_file(const char *path) {
-//
-//	FILE *f = fopen(path, "rb");
-//	if (!f) return false;
-//
-//	unsigned char buffer[512];
-//	size_t n = fread(buffer, 1, sizeof(buffer), f);
-//	fclose(f);
-//
-//	for (size_t i = 0; i < n; i++) {
-//		if(buffer[i] == '\0') {
-//			return false;
-//		}
-//	}
-//
-//	return true;
-// }
-
-FileType classify_file(const char *path) {
-  struct stat st;
-  if (stat(path, &st) != 0) {
-    return FILE_TYPE_BINARY_DATA;
+static FileType classify_file(FileInfo *file_info) {
+  if (file_info->mode == 0) {
+    return FILE_TYPE_EXECUTABLE_BINARY;
   }
 
-  if (!S_ISREG(st.st_mode)) {
+  if (S_ISLNK(file_info->mode)) {
+    return FILE_TYPE_LNK;
+  } else if (S_ISDIR(file_info->mode)) {
     return FILE_TYPE_DIRECTORY;
   }
 
-  FileType result = FILE_TYPE_TEXT_PLAIN;
+  FileType file_type = FILE_TYPE_BINARY_DATA;
 
-  FILE *file = fopen(path, "rb");
+  FILE *file = fopen(file_info->path, "rb");
   if (!file)
-    return FILE_TYPE_EXECUTABLE_BINARY;
+    return file_type;
 
   unsigned char buf[512];
   size_t n = 0;
   if ((n = fread(buf, 1, sizeof(buf), file)) > 0) {
     if (buf[0] == 0x7F && buf[1] == 'E' && buf[2] == 'L' && buf[3] == 'F') {
-
-      result = FILE_TYPE_EXECUTABLE_BINARY;
-    }
-
-    else if (buf[0] == '#' && buf[1] == '!') {
-      result = FILE_TYPE_EXECUTABLE_SCRIPT;
-    } else {
-      for (size_t i = 0; i < n; i++) {
-        if (buf[i] == '\0') {
-          result = FILE_TYPE_BINARY_DATA;
-        }
-      }
+      file_type = FILE_TYPE_EXECUTABLE_BINARY;
+    } else if (buf[0] == '#' && buf[1] == '!') {
+      return FILE_TYPE_EXECUTABLE_SCRIPT;
     }
   }
 
   fclose(file);
-  return result;
+  return file_type;
+}
+
+static void fill_file_info(FileInfo *file_info, char *path, char *name) {
+  struct stat st;
+  snprintf(file_info->name, sizeof(file_info->name), "%s", name);
+  append_path_segment(path, name, file_info->path, 2048);
+
+  if (lstat(file_info->path, &st) != 0) {
+    file_info->file_type = FILE_TYPE_BINARY_DATA;
+    file_info->mod_time = 0;
+    file_info->size = 0;
+    file_info->mode = 0;
+  }
+
+  file_info->mode = st.st_mode;
+  file_info->size = st.st_size;
+  file_info->mod_time = st.st_mtim.tv_sec;
+  file_info->file_type = classify_file(file_info);
 }
 
 int load_dir(char *path, FileInfo *buf, int buf_size) {
@@ -96,7 +90,6 @@ int load_dir(char *path, FileInfo *buf, int buf_size) {
 
   while ((fs_ent = readdir(root)) != NULL && count < buf_size) {
     char *name = fs_ent->d_name;
-    int type = fs_ent->d_type;
 
     if (strcmp(name, ".") == 0 ||
         (strcmp(path, "/") == 0 && strcmp(name, "..") == 0)) {
@@ -104,28 +97,13 @@ int load_dir(char *path, FileInfo *buf, int buf_size) {
     }
 
     FileInfo file_info = {0};
-
-    snprintf(file_info.name, sizeof(file_info.name), "%s", name);
-    append_path_segment(path, name, file_info.path, 1024);
-
-    file_info.mode = sb.st_mode;
-    file_info.type = type;
-
-    if (stat(file_info.path, &sb) == 0) {
-      file_info.mode = sb.st_mode;
-      file_info.size = sb.st_size;
-      file_info.mod_time = sb.st_mtim.tv_sec;
-    }
-
-    file_info.file_type = classify_file(file_info.path);
+    fill_file_info(&file_info, path, name);
 
     buf[count] = file_info;
-
     count++;
   }
 
   closedir(root);
-
   return count;
 }
 
