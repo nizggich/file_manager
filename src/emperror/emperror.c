@@ -162,8 +162,30 @@ void commander_run() {
       char input_string[80];
       handle_win_input(popup_win, input_string, 80);
 
-      char result[82];
-      append_path_segment(panel->path, input_string, result, 82);
+      char path[82];
+      append_path_segment(panel->path, input_string, path, 82);
+
+      int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644);
+
+      if (fd == -1) {
+        mvwprintw(popup_win, 2, 1, "%s", "Can't create file");
+      }
+
+      close(fd);
+
+      load_sorted_dir(panel);
+      draw_ui(panel);
+      toggle_highlight(panel, true);
+      box(panel->win, 0, 0);
+      wrefresh(panel->win);
+
+      int second_index =
+          activePanel == PANEL_COUNT - 1 ? activePanel - 1 : activePanel + 1;
+      Panel *second_panel = panels[second_index];
+      load_sorted_dir(second_panel);
+      draw_ui(second_panel);
+      box(second_panel->win, 0, 0);
+      wrefresh(second_panel->win);
 
       delwin(popup_win);
     } else if (ch == 'k' && panel->selected_item > 0) { // w //119
