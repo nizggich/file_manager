@@ -30,6 +30,8 @@ void commander_run() {
   init_pair(CP_EXE_SCR, COLOR_GREEN, COLOR_BLACK);
   init_pair(CP_EXE_BIN, COLOR_RED, COLOR_BLACK);
   init_pair(CP_SELECTED_ITEM, COLOR_BLUE, COLOR_WHITE);
+  init_pair(CP_BIN_DATA, COLOR_BLUE, COLOR_BLACK);
+  init_pair(CP_BASE, COLOR_WHITE, COLOR_BLACK);
 
   init_color(COLOR_MAGENTA, 1000, 500, 0);
   init_pair(8, COLOR_MAGENTA, -1);
@@ -71,8 +73,8 @@ void commander_run() {
   box(left_win, 0, 0);
   box(right_win, 0, 0);
   scale_interface();
-  draw_ui(&left_panel);
-  draw_ui(&right_panel);
+  draw_panel(&left_panel);
+  draw_panel(&right_panel);
   toggle_highlight(&left_panel, true);
   wrefresh(left_panel.win);
   wrefresh(right_panel.win);
@@ -110,8 +112,8 @@ void commander_run() {
       box(left_panel.win, 0, 0);
       box(right_panel.win, 0, 0);
 
-      draw_ui(&left_panel);
-      draw_ui(&right_panel);
+      draw_panel(&left_panel);
+      draw_panel(&right_panel);
       toggle_highlight(panel, true);
 
       wnoutrefresh(left_panel.win);
@@ -137,7 +139,7 @@ void commander_run() {
       }
 
       load_sorted_dir(panel);
-      draw_ui(panel);
+      draw_panel(panel);
       toggle_highlight(panel, true);
       box(panel->win, 0, 0);
       wrefresh(panel->win);
@@ -146,7 +148,7 @@ void commander_run() {
           activePanel == PANEL_COUNT - 1 ? activePanel - 1 : activePanel + 1;
       Panel *second_panel = panels[second_index];
       load_sorted_dir(second_panel);
-      draw_ui(second_panel);
+      draw_panel(second_panel);
       box(second_panel->win, 0, 0);
       wrefresh(second_panel->win);
 
@@ -174,7 +176,7 @@ void commander_run() {
       close(fd);
 
       load_sorted_dir(panel);
-      draw_ui(panel);
+      draw_panel(panel);
       toggle_highlight(panel, true);
       box(panel->win, 0, 0);
       wrefresh(panel->win);
@@ -183,7 +185,7 @@ void commander_run() {
           activePanel == PANEL_COUNT - 1 ? activePanel - 1 : activePanel + 1;
       Panel *second_panel = panels[second_index];
       load_sorted_dir(second_panel);
-      draw_ui(second_panel);
+      draw_panel(second_panel);
       box(second_panel->win, 0, 0);
       wrefresh(second_panel->win);
 

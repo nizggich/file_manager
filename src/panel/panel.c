@@ -75,16 +75,20 @@ static int append_name_prefix(char *name, FileType file_type,
   case FILE_TYPE_DIRECTORY:
     ch = '/';
     break;
-  case FILE_TYPE_LNK:
+  case FILE_TYPE_LNK_TO_DIR:
     ch = '~';
     break;
-  case FILE_TYPE_EXECUTABLE_BINARY:
+  case FILE_TYPE_LNK_OTHER:
     ch = '@';
     break;
   case FILE_TYPE_EXECUTABLE_SCRIPT:
+  case FILE_TYPE_EXECUTABLE_BINARY:
     ch = '*';
     break;
   case FILE_TYPE_BINARY_DATA:
+  case FILE_TYPE_LNK_UNKNOWN:
+  case FILE_TYPE_LNK_BROKEN:
+  case FILE_TYPE_UNKNOWN:
     ch = ' ';
     break;
   default:
@@ -112,18 +116,22 @@ static void truncate_name(char *name, int x) {
 static int get_color_pair(FileType file_type) {
   switch (file_type) {
   case FILE_TYPE_DIRECTORY:
-  case FILE_TYPE_LNK:
+  case FILE_TYPE_LNK_TO_DIR:
     return COLOR_PAIR(CP_DIR) | A_BOLD;
     break;
   case FILE_TYPE_EXECUTABLE_SCRIPT:
-    return COLOR_PAIR(CP_EXE_SCR) | A_BOLD;
+    return COLOR_PAIR(CP_EXE_SCR);
     break;
   case FILE_TYPE_EXECUTABLE_BINARY:
     return COLOR_PAIR(CP_EXE_BIN);
     break;
   case FILE_TYPE_BINARY_DATA:
-  default:
     return COLOR_PAIR(CP_BIN_DATA);
+    break;
+  case FILE_TYPE_LNK_OTHER:
+  case FILE_TYPE_UNKNOWN:
+  default:
+    return COLOR_PAIR(CP_BASE);
   }
 }
 
@@ -304,7 +312,7 @@ void draw_headers_vborders(Panel *panel) {
   }
 }
 
-void draw_columns_ui(Panel *panel) {
+void draw_columns(Panel *panel) {
   draw_headers_names(panel);
   draw_headers_hborders(panel);
   draw_headers_vborders(panel);
@@ -374,8 +382,8 @@ void draw_dir(Panel *panel) {
   refresh_win(win);
 }
 
-void draw_ui(Panel *panel) {
-  draw_columns_ui(panel);
+void draw_panel(Panel *panel) {
+  draw_columns(panel);
   draw_dir(panel);
   refresh_win(panel->win);
 }
@@ -405,24 +413,12 @@ void enter_dir(Panel *panel) {
   char *name = fileInfo->name;
   int type = fileInfo->file_type;
 
-  if (type == FILE_TYPE_DIRECTORY && panel->count > 0) {
+  if (strcmp_(name, "..") == 0) {
+    exit_dir(panel);
+    return;
+  }
 
-    if (strcmp_(name, "..") == 0) {
-      exit_dir(panel);
-      return;
-    }
-
-    append_path_segment(panel->path, fileInfo->name, panel->path, 2048);
-    panel->selected_item = 0;
-
-    int elements = load_dir(panel->path, panel->items, 512);
-    panel->count = elements;
-
-    sort_dir(panel->items, panel->count);
-    draw_dir(panel);
-
-    toggle_highlight(panel, true);
-  } else {
+  if (is_binary(type)) {
     def_prog_mode();
     endwin();
 
@@ -431,9 +427,24 @@ void enter_dir(Panel *panel) {
     int result = system(cmd);
 
     reset_prog_mode();
+    return;
   }
 
-  refresh_win(panel->win);
+  append_path_segment(panel->path, name, panel->path, 2048);
+
+  if (type == FILE_TYPE_LNK_TO_DIR) {
+    char real_path[PATH_MAX];
+    char *ptr = realpath(panel->path, real_path);
+    if (ptr == NULL) {
+      return;
+    }
+    strcpy(panel->path, real_path);
+  }
+
+  panel->selected_item = 0;
+  load_sorted_dir(panel);
+  draw_dir(panel);
+  toggle_highlight(panel, true);
 }
 
 void load_sorted_dir(Panel *panel) {
