@@ -2,10 +2,11 @@
 
 typedef enum {
   CP_DIR = 1,
-  CP_BIN_DATA = 1,
   CP_EXE_SCR = 2,
   CP_EXE_BIN = 3,
-  CP_SELECTED_ITEM = 4
+  CP_SELECTED_ITEM = 4,
+  CP_BIN_DATA,
+  CP_BASE,
 } ColorPair;
 
 void erase_area(WINDOW *win, int x1, int x2, int y1, int y2);
