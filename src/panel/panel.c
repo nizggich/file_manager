@@ -394,6 +394,8 @@ void exit_dir(Panel *panel) {
   get_last_segment(panel->path, entry_name, sizeof(entry_name));
 
   substract_path_segment(panel->path, panel->path, 512);
+  history_add(panel->history, panel->path);
+
   panel->selected_item = 0;
 
   int elements = load_dir(panel->path, panel->items, 512);
@@ -431,6 +433,8 @@ void enter_dir(Panel *panel) {
   }
 
   append_path_segment(panel->path, name, panel->path, 2048);
+
+  history_add(panel->history, panel->path);
 
   if (type == FILE_TYPE_LNK_TO_DIR) {
     char real_path[PATH_MAX];

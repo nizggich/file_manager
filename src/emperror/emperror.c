@@ -58,9 +58,11 @@ void commander_run() {
   left_panel.win = left_win;
   left_panel.active = true;
   left_panel.selected_item = 0;
+  left_panel.history = (NavHistory *)malloc(sizeof(NavHistory));
 
   right_panel.win = right_win;
   right_panel.selected_item = 0;
+  right_panel.history = (NavHistory *)malloc(sizeof(NavHistory));
 
   Panel *panels[] = {&left_panel, &right_panel};
 
@@ -268,6 +270,8 @@ void commander_run() {
       panel->selected_item = new_selected_item;
       draw_dir(panel);
       toggle_highlight(panel, true);
+    } else if (ch == 'u') {
+      strcpy(panel->path, history_go_back(panel->history));
     } else if (ch == 10) { // Enter
       enter_dir(panel);
     } else if (ch == 263) { // Backspace
