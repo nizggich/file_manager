@@ -3,7 +3,7 @@
 CC = gcc
 LIBS = ncurses
 
-SRCS = src/main.c src/emperror/emperror.c src/fs/fs.c src/ui/ui.c src/panel/panel.c src/qsort/qsort.c src/utils/utils.c
+SRCS = src/main.c src/emperror/emperror.c src/fs/fs.c src/nav_history/NavHistory.c src/ui/ui.c src/panel/panel.c src/qsort/qsort.c src/utils/utils.c
 TARGET = emperror 
 
 .PHONY: build run clean

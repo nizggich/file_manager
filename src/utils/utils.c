@@ -71,6 +71,11 @@ int get_last_segment_start_index(char *path) {
   }
 
   int i = strlen(path) - 1;
+
+  if (i == 0) {
+    return i;
+  }
+
   char *end_path = path + i;
   char tmp;
   while ((tmp = *end_path) != '/') {
@@ -90,7 +95,8 @@ void get_last_segment(char *path, char *buf, int buf_size) {
 }
 
 void substract_path_segment(char *base_path, char *buf, int buf_size) {
-  if (!base_path || !buf || strlen(base_path) > buf_size) {
+  int path_len = strlen(base_path);
+  if (!base_path || !buf || path_len > buf_size) {
     return;
   }
 
@@ -100,7 +106,10 @@ void substract_path_segment(char *base_path, char *buf, int buf_size) {
     return;
   }
 
-  strncpy(buf, base_path, i);
+  char path_cpy[path_len + 1];
+  strcpy(path_cpy, base_path);
+
+  strncpy(buf, path_cpy, i);
 
   if (i == 1) {
     buf[i] = '\0';

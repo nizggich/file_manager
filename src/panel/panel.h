@@ -1,4 +1,5 @@
 #include "../fs/fs.h"
+#include "../nav_history/NavHistory.h"
 #include "../ui/ui.h"
 #include "../utils/utils.h"
 #include <ncurses.h>
@@ -11,6 +12,7 @@ extern int term_width, term_height;
 #define PAGE_SIZE (term_height - 4)
 #define Y_TOP_OFFSET 3
 #define Y_BOTTOM_OFFSET (term_height - 2)
+#define HISTORY_SIZE 50
 
 typedef enum { NAME, SIZE, MOD_TIME } ColumnType;
 
@@ -41,6 +43,7 @@ typedef struct {
   int count;
   int selected_item;
   WINDOW *win;
+  NavHistory *history;
 } Panel;
 
 void move_selection(Panel *panel, int position);
@@ -48,8 +51,9 @@ void switch_panel(Panel *old_panel, Panel *new_panel);
 void toggle_highlight(Panel *panel, bool highlight);
 
 void erase_dir_area(Panel *panel);
-void exit_dir(Panel *panel);
+void enter_file(Panel *panel);
 void enter_dir(Panel *panel);
+void exit_file(Panel *panel);
 void load_sorted_dir(Panel *panel);
 WINDOW *create_popup_win(char *title);
 void handle_win_input(WINDOW *win, char *input_buf, int size);

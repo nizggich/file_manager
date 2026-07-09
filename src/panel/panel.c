@@ -215,6 +215,27 @@ static void draw_mod_time(WINDOW *win, PanelEntry *entry, int x, int y) {
   printw_str(win, mod_time, x, y);
 }
 
+void enter_dir(Panel *panel) {
+  load_sorted_dir(panel);
+  panel->selected_item = 0;
+  draw_dir(panel);
+  toggle_highlight(panel, true);
+
+  refresh_win(panel->win);
+}
+
+void static enter_by_vim(char *path) {
+  def_prog_mode();
+  endwin();
+
+  char cmd[2048];
+  snprintf(cmd, sizeof(cmd), "vim %s", path);
+  int result = system(cmd);
+
+  reset_prog_mode();
+  return;
+}
+
 void toggle_highlight(Panel *panel, bool highlight) {
   int selected_item = panel->selected_item;
   FileInfo *file_info = &panel->items[selected_item];
@@ -388,19 +409,23 @@ void draw_panel(Panel *panel) {
   refresh_win(panel->win);
 }
 
-void exit_dir(Panel *panel) {
+void exit_file(Panel *panel) {
 
   char entry_name[128];
   get_last_segment(panel->path, entry_name, sizeof(entry_name));
 
+  if (strcmp(panel->path, entry_name) == 0) {
+    move_selection(panel, 0);
+    refresh_win(panel->win);
+    return;
+  }
+
   substract_path_segment(panel->path, panel->path, 512);
+  history_add(panel->history, panel->path);
+
+  load_sorted_dir(panel);
   panel->selected_item = 0;
-
-  int elements = load_dir(panel->path, panel->items, 512);
-  panel->count = elements;
-
-  sort_dir(panel->items, panel->count);
-  draw_dir(panel);
+  draw_panel(panel);
 
   panel->selected_item = get_index_dir_by_name(panel, entry_name);
   toggle_highlight(panel, true);
@@ -408,43 +433,41 @@ void exit_dir(Panel *panel) {
   refresh_win(panel->win);
 }
 
-void enter_dir(Panel *panel) {
+void enter_file(Panel *panel) {
   FileInfo *fileInfo = &panel->items[panel->selected_item];
   char *name = fileInfo->name;
   int type = fileInfo->file_type;
 
-  if (strcmp_(name, "..") == 0) {
-    exit_dir(panel);
+  if (strcmp(name, "..") == 0) {
+    exit_file(panel);
     return;
   }
 
-  if (is_binary(type)) {
-    def_prog_mode();
-    endwin();
-
-    char cmd[2048];
-    snprintf(cmd, sizeof(cmd), "vim %s/%s", panel->path, fileInfo->name);
-    int result = system(cmd);
-
-    reset_prog_mode();
-    return;
-  }
-
-  append_path_segment(panel->path, name, panel->path, 2048);
-
-  if (type == FILE_TYPE_LNK_TO_DIR) {
+  switch (type) {
+  case FILE_TYPE_DIRECTORY:
+    append_path_segment(panel->path, name, panel->path, 512);
+    history_add(panel->history, panel->path);
+    enter_dir(panel);
+    break;
+  case FILE_TYPE_LNK_TO_DIR:
+    append_path_segment(panel->path, name, panel->path, 512);
     char real_path[PATH_MAX];
     char *ptr = realpath(panel->path, real_path);
     if (ptr == NULL) {
       return;
     }
     strcpy(panel->path, real_path);
+    enter_dir(panel);
+    history_add(panel->history, panel->path);
+    break;
+  case FILE_TYPE_EXECUTABLE_BINARY:
+  case FILE_TYPE_EXECUTABLE_SCRIPT:
+  case FILE_TYPE_BINARY_DATA:
+    char path[PATH_MAX];
+    append_path_segment(panel->path, name, path, PATH_MAX);
+    enter_by_vim(path);
+    break;
   }
-
-  panel->selected_item = 0;
-  load_sorted_dir(panel);
-  draw_dir(panel);
-  toggle_highlight(panel, true);
 }
 
 void load_sorted_dir(Panel *panel) {
