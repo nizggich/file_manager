@@ -51,8 +51,9 @@ void switch_panel(Panel *old_panel, Panel *new_panel);
 void toggle_highlight(Panel *panel, bool highlight);
 
 void erase_dir_area(Panel *panel);
-void exit_dir(Panel *panel);
+void enter_file(Panel *panel);
 void enter_dir(Panel *panel);
+void exit_file(Panel *panel);
 void load_sorted_dir(Panel *panel);
 WINDOW *create_popup_win(char *title);
 void handle_win_input(WINDOW *win, char *input_buf, int size);

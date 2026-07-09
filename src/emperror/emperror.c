@@ -7,7 +7,6 @@
 #include <unistd.h>
 
 int term_width, term_height;
-bool iLoveColors = false;
 
 void commander_run() {
   initscr();
@@ -26,12 +25,12 @@ void commander_run() {
   use_default_colors();
   curs_set(0);
 
-  init_pair(CP_DIR, COLOR_WHITE, COLOR_BLACK);
-  init_pair(CP_EXE_SCR, COLOR_GREEN, COLOR_BLACK);
-  init_pair(CP_EXE_BIN, COLOR_RED, COLOR_BLACK);
+  init_pair(CP_DIR, COLOR_WHITE, -1);
+  init_pair(CP_EXE_SCR, COLOR_GREEN, -1);
+  init_pair(CP_EXE_BIN, COLOR_RED, -1);
   init_pair(CP_SELECTED_ITEM, COLOR_BLUE, COLOR_WHITE);
-  init_pair(CP_BIN_DATA, COLOR_BLUE, COLOR_BLACK);
-  init_pair(CP_BASE, COLOR_WHITE, COLOR_BLACK);
+  init_pair(CP_BIN_DATA, COLOR_BLUE, -1);
+  init_pair(CP_BASE, COLOR_WHITE, -1);
 
   init_color(COLOR_MAGENTA, 1000, 500, 0);
   init_pair(8, COLOR_MAGENTA, -1);
@@ -68,6 +67,9 @@ void commander_run() {
 
   getcwd(left_panel.path, sizeof(left_panel.path));
   getcwd(right_panel.path, sizeof(right_panel.path));
+
+  // left_panel.history->paths[0] = strdup(left_panel.path);
+  //  right_panel.history->paths[0] = strdup(right_panel.path);
 
   load_sorted_dir(&left_panel);
   load_sorted_dir(&right_panel);
@@ -271,11 +273,21 @@ void commander_run() {
       draw_dir(panel);
       toggle_highlight(panel, true);
     } else if (ch == 'u') {
-      strcpy(panel->path, history_go_back(panel->history));
+      char *path = history_go_back(panel->history);
+      if (path != NULL) {
+        strcpy(panel->path, path);
+        enter_dir(panel);
+      }
+    } else if (ch == 'i') {
+      char *path = history_go_forward(panel->history);
+      if (path != NULL) {
+        strcpy(panel->path, path);
+        enter_dir(panel);
+      }
     } else if (ch == 10) { // Enter
-      enter_dir(panel);
+      enter_file(panel);
     } else if (ch == 263) { // Backspace
-      exit_dir(panel);
+      exit_file(panel);
     }
 
     doupdate();
