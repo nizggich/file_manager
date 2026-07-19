@@ -1,5 +1,6 @@
 #include "fs.h"
 #include <dirent.h>
+#include <stdio.h>
 #include <sys/stat.h>
 
 int cmp_dir(const void *a, const void *b) {
@@ -9,13 +10,13 @@ int cmp_dir(const void *a, const void *b) {
   FileInfo *b_ent = (FileInfo *)b;
   FileType b_type = b_ent->file_type;
 
-  if (is_dir(a_type) && is_dir(b_type)) {
+  if (is_dir_or_lnk(a_type) && is_dir_or_lnk(b_type)) {
     return strcmp_(a_ent->name, b_ent->name);
-  } else if (!is_dir(a_type) && is_dir(b_type)) {
+  } else if (!is_dir_or_lnk(a_type) && is_dir_or_lnk(b_type)) {
     return 1;
-  } else if (is_dir(a_type) && !is_dir(b_type)) {
+  } else if (is_dir_or_lnk(a_type) && !is_dir_or_lnk(b_type)) {
     return -1;
-  } else if (!is_dir(a_type) && !is_dir(b_type)) {
+  } else if (!is_dir_or_lnk(a_type) && !is_dir_or_lnk(b_type)) {
     return strcmp_(a_ent->name, b_ent->name);
   }
 
@@ -129,6 +130,38 @@ int load_dir(char *path, FileInfo *buf, int buf_size) {
 
   closedir(root);
   return count;
+}
+
+int remove_dir(const char *path) {
+  if (!path) {
+    return -1;
+  }
+
+  FileType ft = classify_file(path);
+
+  if (is_binary(ft) || is_lnk_to_dir(ft)) {
+    return remove(path);
+  }
+
+  DIR *dir = opendir(path);
+  struct dirent *fs_ent;
+
+  while ((fs_ent = readdir(dir)) != NULL) {
+
+    char *name = fs_ent->d_name;
+
+    if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+      continue;
+    }
+
+    char new_path[PATH_MAX]; // можно словить stackoverflow
+
+    append_path_segment(path, name, new_path, PATH_MAX);
+
+    remove_dir(new_path);
+  }
+
+  return rmdir(path);
 }
 
 void sort_dir(FileInfo *buf, int buf_size) {

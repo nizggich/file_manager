@@ -51,13 +51,25 @@ static inline bool is_binary(FileType file_type) {
 }
 
 static inline bool is_dir(FileType file_type) {
-  if (file_type == FILE_TYPE_DIRECTORY || file_type == FILE_TYPE_LNK_TO_DIR)
+  if (file_type == FILE_TYPE_DIRECTORY)
+    return true;
+  return false;
+}
+
+static inline bool is_lnk_to_dir(FileType file_type) {
+  if (file_type == FILE_TYPE_LNK_TO_DIR)
+    return true;
+  return false;
+}
+
+static inline bool is_dir_or_lnk(FileType file_type) {
+  if (is_dir(file_type) || is_lnk_to_dir(file_type))
     return true;
   return false;
 }
 
 int cmp_dir(const void *a, const void *b);
-bool is_text_file(const char *path);
 FileType classify_file(const char *path);
 int load_dir(char *path, FileInfo *buf, int buf_size);
+int remove_dir(const char *path);
 void sort_dir(FileInfo *buf, int buf_size);
