@@ -8,6 +8,15 @@
 
 int term_width, term_height;
 
+static Panel *PANELS[2];
+static int activePanel = 0;
+
+static Panel *get_second_panel() {
+  int second_index =
+      activePanel == PANEL_COUNT - 1 ? activePanel - 1 : activePanel + 1;
+  return PANELS[second_index];
+}
+
 void commander_run() {
   initscr();
 
@@ -63,31 +72,22 @@ void commander_run() {
   right_panel.selected_item = 0;
   right_panel.history = (NavHistory *)malloc(sizeof(NavHistory));
 
-  Panel *panels[] = {&left_panel, &right_panel};
+  PANELS[0] = &left_panel;
+  PANELS[1] = &right_panel;
 
   getcwd(left_panel.path, sizeof(left_panel.path));
   getcwd(right_panel.path, sizeof(right_panel.path));
 
-  // left_panel.history->paths[0] = strdup(left_panel.path);
-  //  right_panel.history->paths[0] = strdup(right_panel.path);
-
-  load_sorted_dir(&left_panel);
-  load_sorted_dir(&right_panel);
-
-  box(left_win, 0, 0);
-  box(right_win, 0, 0);
   scale_interface();
-  draw_panel(&left_panel);
-  draw_panel(&right_panel);
-  toggle_highlight(&left_panel, true);
-  wrefresh(left_panel.win);
-  wrefresh(right_panel.win);
+  reload_panel(&left_panel, true);
+  reload_panel(&right_panel, false);
+
+  doupdate();
 
   int ch;
-  int activePanel = 0;
 
   while ((ch = getch()) != 'q') {
-    Panel *panel = panels[activePanel];
+    Panel *panel = PANELS[activePanel];
 
     if (ch == KEY_RESIZE) {
       endwin();
@@ -123,76 +123,47 @@ void commander_run() {
       wnoutrefresh(left_panel.win);
       wnoutrefresh(right_panel.win);
 
-    } else if (ch == 'd') {
-      WINDOW *popup_win = create_popup_win("Enter dir name");
+    } else if (ch == 'a') {
+      char title[] = "Enter name";
+      int title_len = strlen(title);
+      int borders = 2;
+
+      int popup_width =
+          term_width / 2 >= title_len ? term_width / 2 : title_len - borders;
+      int popup_y = term_height / 3 >= 3 ? term_height / 3 : 3;
+      int popup_x = (term_width - popup_width) / 2;
+
+      WINDOW *popup_win =
+          create_popup_win(title, 4, popup_width, popup_y, popup_x);
+      // вынеси этот метод в отдельный файл popup_win
       wrefresh(popup_win);
 
-      int popup_width;
-      getmaxx(popup_win);
-
       char input_string[80];
-      handle_win_input(popup_win, input_string, 80);
+      handle_win_input(popup_win, input_string, 80, false, true);
 
-      char result[82];
-      append_path_segment(panel->path, input_string, result, 82);
-
-      int status = mkdir(result, 0755);
-
-      if (!status) {
-        mvwprintw(popup_win, 2, 1, "%s", "Can't create dir");
+      int input_len = strlen(input_string);
+      if (input_len <= 0) {
+        continue;
       }
-
-      load_sorted_dir(panel);
-      draw_panel(panel);
-      toggle_highlight(panel, true);
-      box(panel->win, 0, 0);
-      wrefresh(panel->win);
-
-      int second_index =
-          activePanel == PANEL_COUNT - 1 ? activePanel - 1 : activePanel + 1;
-      Panel *second_panel = panels[second_index];
-      load_sorted_dir(second_panel);
-      draw_panel(second_panel);
-      box(second_panel->win, 0, 0);
-      wrefresh(second_panel->win);
-
-      delwin(popup_win);
-      ch = 0;
-    } else if (ch == 'f') {
-      WINDOW *popup_win = create_popup_win("Enter file name");
-      wrefresh(popup_win);
-
-      int popup_width;
-      getmaxx(popup_win);
-
-      char input_string[80];
-      handle_win_input(popup_win, input_string, 80);
 
       char path[82];
       append_path_segment(panel->path, input_string, path, 82);
 
-      int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644);
-
-      if (fd == -1) {
+      int status = 0;
+      if (path[strlen(path) - 1] == '/' && (status = mkdir(path, 0755)) < 0) {
+        mvwprintw(popup_win, 2, 1, "%s", "Can't create dir");
+      } else if ((status = open(path, O_CREAT | O_EXCL | O_WRONLY, 0644)) < 0) {
         mvwprintw(popup_win, 2, 1, "%s", "Can't create file");
+        close(status);
       }
 
-      close(fd);
+      if (!status) {
+        wait_input(popup_win);
+      }
 
-      load_sorted_dir(panel);
-      draw_panel(panel);
-      toggle_highlight(panel, true);
-      box(panel->win, 0, 0);
-      wrefresh(panel->win);
-
-      int second_index =
-          activePanel == PANEL_COUNT - 1 ? activePanel - 1 : activePanel + 1;
-      Panel *second_panel = panels[second_index];
-      load_sorted_dir(second_panel);
-      draw_panel(second_panel);
-      box(second_panel->win, 0, 0);
-      wrefresh(second_panel->win);
-
+      reload_panel(panel, true);
+      Panel *second_panel = get_second_panel();
+      reload_panel(second_panel, false);
       delwin(popup_win);
     } else if (ch == 'k' && panel->selected_item > 0) { // w //119
       int new_pos = 0;
@@ -231,9 +202,9 @@ void commander_run() {
         activePanel++;
 
       panel->active = false;
-      panels[activePanel]->active = true;
+      PANELS[activePanel]->active = true;
 
-      switch_panel(panel, panels[activePanel]);
+      switch_panel(panel, PANELS[activePanel]);
     } else if (ch == 'K') { // page up
       int selected_item = panel->selected_item;
 
@@ -284,12 +255,36 @@ void commander_run() {
         strcpy(panel->path, path);
         enter_dir(panel);
       }
+    } else if (ch == 'd') {
+      char new_path[PATH_MAX];
+      FileInfo *fileInfo = &panel->items[panel->selected_item];
+      char *name = fileInfo->name;
+      append_path_segment(panel->path, name, new_path, PATH_MAX);
+
+      char title[] = "Are you sure?";
+      int title_len = strlen(title);
+      int borders = 2;
+      int popup_width =
+          term_width / 2 >= title_len ? term_width / 2 : title_len - borders;
+      int popup_y = term_height / 3 >= 3 ? term_height / 3 : 3;
+      int popup_x = (term_width - popup_width) / 2;
+      WINDOW *alert_win =
+          create_alert_dialog(title, 4, popup_width, popup_y, popup_x);
+
+      char input_buf[80];
+      handle_win_input(alert_win, input_buf, sizeof(input_buf), true, false);
+      if (input_buf[0] == 'Y') {
+        remove_dir(new_path);
+      }
+      reload_panel(panel, true);
+      reload_panel(get_second_panel(), false);
     } else if (ch == 10) { // Enter
       enter_file(panel);
     } else if (ch == 263) { // Backspace
       exit_file(panel);
+    } else if (ch == 'R') {
+      refresh_panel(panel);
     }
-
     doupdate();
   }
 

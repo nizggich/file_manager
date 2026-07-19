@@ -409,6 +409,21 @@ void draw_panel(Panel *panel) {
   refresh_win(panel->win);
 }
 
+void reload_panel(Panel *panel, bool highlight) {
+  load_sorted_dir(panel);
+  draw_panel(panel);
+  toggle_highlight(panel, highlight);
+  box(panel->win, 0, 0);
+  refresh_win(panel->win);
+}
+
+void refresh_panel(Panel *panel) {
+  draw_panel(panel);
+  toggle_highlight(panel, true);
+  box(panel->win, 0, 0);
+  refresh_win(panel->win);
+}
+
 void exit_file(Panel *panel) {
 
   char entry_name[128];
@@ -476,28 +491,40 @@ void load_sorted_dir(Panel *panel) {
   sort_dir(panel->items, panel->count);
 }
 
-WINDOW *create_popup_win(char *title) {
+WINDOW *create_popup_win(char *title, int height, int width, int y, int x) {
   int title_len = strlen(title);
   int borders = 2;
 
-  int popup_width =
-      term_width / 2 >= title_len ? term_width / 2 : title_len - borders;
-  int popup_y = term_height / 3 >= 3 ? term_height / 3 : 3;
+  WINDOW *popup_win = newwin(height, width, y, x);
 
-  int left_gap = (term_width - popup_width) / 2;
-  WINDOW *popup_win = newwin(4, popup_width, popup_y, left_gap);
-
-  int title_pos = (popup_width / 2) - title_len / 2;
+  int title_pos = (width / 2) - title_len / 2;
   if (title_pos < 1) {
     title_pos = 1;
   }
+
+  int title_end = width - borders;
+  if (title_len > title_end) {
+    title[title_end] = '\0';
+  }
+
   box(popup_win, 0, 0);
   mvwprintw(popup_win, 1, title_pos, "%s", title);
 
   return popup_win;
 }
 
-void handle_win_input(WINDOW *win, char *input_buf, int size) {
+WINDOW *create_alert_dialog(char *title, int height, int width, int x, int y) {
+  WINDOW *alert_dialog = create_popup_win(title, height, width, x, y);
+  int x1 = width / 4;
+  int x2 = width - x1;
+  mvwprintw(alert_dialog, height - 2, x1, "%s", "(Y)es");
+  mvwprintw(alert_dialog, height - 2, x2, "%s", "(N)o");
+
+  return alert_dialog;
+}
+
+void handle_win_input(WINDOW *win, char *input_buf, int size, bool alert_dialog,
+                      bool display) {
   noecho();
 
   int win_width = getmaxx(win);
@@ -506,7 +533,17 @@ void handle_win_input(WINDOW *win, char *input_buf, int size) {
   int i = -1;
   int curs_pos = 0;
 
+  if (alert_dialog) {
+    ch = wgetch(win);
+    input_buf[0] = ch;
+    return;
+  }
+
   while ((ch = wgetch(win)) != '\n' && i != size - 2) {
+    if (ch == 27) {
+      input_buf[0] = '\0';
+      return;
+    }
     if (ch == 127) {
       if (i >= 0 && curs_pos > 0) {
         input_buf[i] = '\0';
@@ -534,10 +571,21 @@ void handle_win_input(WINDOW *win, char *input_buf, int size) {
     curs_pos++;
     input_buf[i] = ch;
 
-    mvwprintw(win, 2, curs_pos, "%c", ch);
+    if (display) {
+      mvwprintw(win, 2, curs_pos, "%c", ch);
+    }
+
     box(win, 0, 0);
   }
+
   input_buf[i + 1] = '\0';
+}
+
+void wait_input(WINDOW *win) {
+  int ch;
+
+  while ((ch = wgetch(win)) != '\n' && ch != 27 && ch != 'q') {
+  }
 }
 
 void scale_interface() {

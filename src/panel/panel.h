@@ -55,11 +55,16 @@ void enter_file(Panel *panel);
 void enter_dir(Panel *panel);
 void exit_file(Panel *panel);
 void load_sorted_dir(Panel *panel);
-WINDOW *create_popup_win(char *title);
-void handle_win_input(WINDOW *win, char *input_buf, int size);
+WINDOW *create_popup_win(char *title, int height, int width, int x, int y);
+WINDOW *create_alert_dialog(char *title, int height, int width, int x, int y);
+void handle_win_input(WINDOW *win, char *input_buf, int size, bool alert_dialog,
+                      bool display);
+void wait_input(WINDOW *win);
 int get_index_dir_by_name(Panel *panel, char *dir_name);
 
 void draw_panel(Panel *panel);
+void reload_panel(Panel *panel, bool highlight);
+void refresh_panel(Panel *panel);
 void draw_columns(Panel *panel);
 void draw_headers_names(Panel *panel);
 void draw_headers_hborders(Panel *panel);

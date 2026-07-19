@@ -40,7 +40,7 @@ int strcmp_(const char *a, const char *b) {
     return -1;
 }
 
-void append_path_segment(char *base_path, char *segment, char *buf,
+void append_path_segment(const char *base_path, char *segment, char *buf,
                          int buf_size) {
   if (!base_path || !segment || !buf || buf_size <= 0) {
     return;
