@@ -1,5 +1,6 @@
 #include "../fs/fs.h"
-#include "../nav_history/NavHistory.h"
+#include "../history/history.h"
+#include "../popup/popup.h"
 #include "../ui/ui.h"
 #include "../utils/utils.h"
 #include <ncurses.h>
@@ -43,31 +44,26 @@ typedef struct {
   int count;
   int selected_item;
   WINDOW *win;
-  NavHistory *history;
+  History *history;
 } Panel;
 
-void move_selection(Panel *panel, int position);
-void switch_panel(Panel *old_panel, Panel *new_panel);
-void toggle_highlight(Panel *panel, bool highlight);
+void panel_move_selection(Panel *panel, int position);
+void panel_switch(Panel *old_panel, Panel *new_panel);
+void panel_toggle_highlight(Panel *panel, bool highlight);
 
-void erase_dir_area(Panel *panel);
-void enter_file(Panel *panel);
-void enter_dir(Panel *panel);
-void exit_file(Panel *panel);
-void load_sorted_dir(Panel *panel);
-WINDOW *create_popup_win(char *title, int height, int width, int x, int y);
-WINDOW *create_alert_dialog(char *title, int height, int width, int x, int y);
-void handle_win_input(WINDOW *win, char *input_buf, int size, bool alert_dialog,
-                      bool display);
-void wait_input(WINDOW *win);
-int get_index_dir_by_name(Panel *panel, char *dir_name);
+void panel_erase_dir_area(Panel *panel);
+void panel_enter_file(Panel *panel);
+void panel_enter_dir(Panel *panel);
+void panel_exit_file(Panel *panel);
+void panel_load_sorted_dir(Panel *panel);
+int panel_get_index_dir_by_name(Panel *panel, char *dir_name);
 
-void draw_panel(Panel *panel);
-void reload_panel(Panel *panel, bool highlight);
-void refresh_panel(Panel *panel);
-void draw_columns(Panel *panel);
-void draw_headers_names(Panel *panel);
-void draw_headers_hborders(Panel *panel);
-void draw_headers_vborders(Panel *panel);
-void draw_dir(Panel *panel);
-void scale_interface(void);
+void panel_draw(Panel *panel);
+void panel_reload(Panel *panel, bool highlight);
+void panel_refresh(Panel *panel);
+void panel_draw_columns(Panel *panel);
+void panel_draw_headers_names(Panel *panel);
+void panel_draw_headers_hborders(Panel *panel);
+void panel_draw_headers_vborders(Panel *panel);
+void panel_draw_dir(Panel *panel);
+void panel_scale_interface(void);
