@@ -1,5 +1,13 @@
 #include "ui.h"
 
+void erase_area(WINDOW *win, int x1, int x2, int y1, int y2) {
+  int max_x = getmaxx(win);
+
+  for (int i = y1; i <= y2; i++) {
+    mvwhline(win, i, x1, ' ', x2);
+  }
+}
+
 void printw_vline(WINDOW *win, int x, int y, int length) {
   for (int i = y; i < length + 1; i++) {
     mvwaddch(win, i, x, ACS_VLINE);
@@ -9,14 +17,6 @@ void printw_vline(WINDOW *win, int x, int y, int length) {
 void printw_hline(WINDOW *win, int x, int y, int length) {
   for (int i = x; i < length + 1; i++) {
     mvwaddch(win, y, i, ACS_HLINE);
-  }
-}
-
-void erase_area(WINDOW *win, int x1, int x2, int y1, int y2) {
-  int max_x = getmaxx(win);
-
-  for (int i = y1; i <= y2; i++) {
-    mvwhline(win, i, x1, ' ', x2);
   }
 }
 

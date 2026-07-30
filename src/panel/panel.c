@@ -215,11 +215,11 @@ static void draw_mod_time(WINDOW *win, PanelEntry *entry, int x, int y) {
   printw_str(win, mod_time, x, y);
 }
 
-void enter_dir(Panel *panel) {
-  load_sorted_dir(panel);
+void panel_enter_dir(Panel *panel) {
+  panel_load_sorted_dir(panel);
   panel->selected_item = 0;
-  draw_dir(panel);
-  toggle_highlight(panel, true);
+  panel_draw_dir(panel);
+  panel_toggle_highlight(panel, true);
 
   refresh_win(panel->win);
 }
@@ -236,7 +236,7 @@ void static enter_by_vim(char *path) {
   return;
 }
 
-void toggle_highlight(Panel *panel, bool highlight) {
+void panel_toggle_highlight(Panel *panel, bool highlight) {
   int selected_item = panel->selected_item;
   FileInfo *file_info = &panel->items[selected_item];
 
@@ -248,28 +248,28 @@ void toggle_highlight(Panel *panel, bool highlight) {
   refresh_win(panel->win);
 }
 
-void move_selection(Panel *panel, int position) {
+void panel_move_selection(Panel *panel, int position) {
   int page = (panel->selected_item / PAGE_SIZE) + 1;
   if (panel == NULL || position > page * PAGE_SIZE - 1 ||
       position < PAGE_SIZE * (page - 1)) {
     return;
   }
 
-  toggle_highlight(panel, false);
+  panel_toggle_highlight(panel, false);
   panel->selected_item = position;
-  toggle_highlight(panel, true);
+  panel_toggle_highlight(panel, true);
 
   refresh_win(panel->win);
 }
 
-void switch_panel(Panel *old_panel, Panel *new_panel) {
-  toggle_highlight(old_panel, false);
-  toggle_highlight(new_panel, true);
+void panel_switch(Panel *old_panel, Panel *new_panel) {
+  panel_toggle_highlight(old_panel, false);
+  panel_toggle_highlight(new_panel, true);
   refresh_win(old_panel->win);
   refresh_win(new_panel->win);
 }
 
-int get_index_dir_by_name(Panel *panel, char *dir_name) {
+int panel_get_index_dir_by_name(Panel *panel, char *dir_name) {
   for (int i = 0; i < panel->count; i++) {
     FileInfo *file_info = &panel->items[i];
     if (strcmp_(file_info->name, dir_name) == 0) {
@@ -280,7 +280,7 @@ int get_index_dir_by_name(Panel *panel, char *dir_name) {
   return 0;
 }
 
-void erase_dir_area(Panel *panel) {
+void panel_erase_dir_area(Panel *panel) {
   WINDOW *win = panel->win;
   int max_x = get_max_x(win);
 
@@ -295,7 +295,7 @@ void erase_dir_area(Panel *panel) {
              Y_TOP_OFFSET, Y_BOTTOM_OFFSET);
 }
 
-void draw_headers_names(Panel *panel) {
+void panel_draw_headers_names(Panel *panel) {
   WINDOW *win = panel->win;
   for (int i = 0; i < cols_size; i++) {
     ColumnDef *col = &cols[i];
@@ -305,7 +305,7 @@ void draw_headers_names(Panel *panel) {
   }
 }
 
-void draw_headers_hborders(Panel *panel) {
+void panel_draw_headers_hborders(Panel *panel) {
   WINDOW *win = panel->win;
   int x = 1;
   int length = 0;
@@ -321,7 +321,7 @@ void draw_headers_hborders(Panel *panel) {
   }
 }
 
-void draw_headers_vborders(Panel *panel) {
+void panel_draw_headers_vborders(Panel *panel) {
   WINDOW *win = panel->win;
 
   for (int i = 0; i < cols_size; i++) {
@@ -333,15 +333,15 @@ void draw_headers_vborders(Panel *panel) {
   }
 }
 
-void draw_columns(Panel *panel) {
-  draw_headers_names(panel);
-  draw_headers_hborders(panel);
-  draw_headers_vborders(panel);
+void panel_draw_columns(Panel *panel) {
+  panel_draw_headers_names(panel);
+  panel_draw_headers_hborders(panel);
+  panel_draw_headers_vborders(panel);
 
   refresh_win(panel->win);
 }
 
-void draw_dir(Panel *panel) {
+void panel_draw_dir(Panel *panel) {
 
   WINDOW *win = panel->win;
   FileInfo *items = panel->items;
@@ -350,7 +350,7 @@ void draw_dir(Panel *panel) {
   int start = panel->selected_item - (item_y - Y_TOP_OFFSET);
   int end = panel->selected_item + (Y_BOTTOM_OFFSET - item_y);
 
-  erase_dir_area(panel);
+  panel_erase_dir_area(panel);
 
   struct tm tm;
   time_t now;
@@ -403,34 +403,34 @@ void draw_dir(Panel *panel) {
   refresh_win(win);
 }
 
-void draw_panel(Panel *panel) {
-  draw_columns(panel);
-  draw_dir(panel);
+void panel_draw(Panel *panel) {
+  panel_draw_columns(panel);
+  panel_draw_dir(panel);
   refresh_win(panel->win);
 }
 
-void reload_panel(Panel *panel, bool highlight) {
-  load_sorted_dir(panel);
-  draw_panel(panel);
-  toggle_highlight(panel, highlight);
+void panel_reload(Panel *panel, bool highlight) {
+  panel_load_sorted_dir(panel);
+  panel_draw(panel);
+  panel_toggle_highlight(panel, highlight);
   box(panel->win, 0, 0);
   refresh_win(panel->win);
 }
 
-void refresh_panel(Panel *panel) {
-  draw_panel(panel);
-  toggle_highlight(panel, true);
+void panel_refresh(Panel *panel) {
+  panel_draw(panel);
+  panel_toggle_highlight(panel, true);
   box(panel->win, 0, 0);
   refresh_win(panel->win);
 }
 
-void exit_file(Panel *panel) {
+void panel_exit_file(Panel *panel) {
 
   char entry_name[128];
   get_last_segment(panel->path, entry_name, sizeof(entry_name));
 
   if (strcmp(panel->path, entry_name) == 0) {
-    move_selection(panel, 0);
+    panel_move_selection(panel, 0);
     refresh_win(panel->win);
     return;
   }
@@ -438,23 +438,23 @@ void exit_file(Panel *panel) {
   substract_path_segment(panel->path, panel->path, 512);
   history_add(panel->history, panel->path);
 
-  load_sorted_dir(panel);
+  panel_load_sorted_dir(panel);
   panel->selected_item = 0;
-  draw_panel(panel);
+  panel_draw(panel);
 
-  panel->selected_item = get_index_dir_by_name(panel, entry_name);
-  toggle_highlight(panel, true);
+  panel->selected_item = panel_get_index_dir_by_name(panel, entry_name);
+  panel_toggle_highlight(panel, true);
 
   refresh_win(panel->win);
 }
 
-void enter_file(Panel *panel) {
+void panel_enter_file(Panel *panel) {
   FileInfo *fileInfo = &panel->items[panel->selected_item];
   char *name = fileInfo->name;
   int type = fileInfo->file_type;
 
   if (strcmp(name, "..") == 0) {
-    exit_file(panel);
+    panel_exit_file(panel);
     return;
   }
 
@@ -462,7 +462,7 @@ void enter_file(Panel *panel) {
   case FILE_TYPE_DIRECTORY:
     append_path_segment(panel->path, name, panel->path, 512);
     history_add(panel->history, panel->path);
-    enter_dir(panel);
+    panel_enter_dir(panel);
     break;
   case FILE_TYPE_LNK_TO_DIR:
     append_path_segment(panel->path, name, panel->path, 512);
@@ -472,7 +472,7 @@ void enter_file(Panel *panel) {
       return;
     }
     strcpy(panel->path, real_path);
-    enter_dir(panel);
+    panel_enter_dir(panel);
     history_add(panel->history, panel->path);
     break;
   case FILE_TYPE_EXECUTABLE_BINARY:
@@ -485,110 +485,13 @@ void enter_file(Panel *panel) {
   }
 }
 
-void load_sorted_dir(Panel *panel) {
+void panel_load_sorted_dir(Panel *panel) {
   int elements = load_dir(panel->path, panel->items, 512);
   panel->count = elements;
   sort_dir(panel->items, panel->count);
 }
 
-WINDOW *create_popup_win(char *title, int height, int width, int y, int x) {
-  int title_len = strlen(title);
-  int borders = 2;
-
-  WINDOW *popup_win = newwin(height, width, y, x);
-
-  int title_pos = (width / 2) - title_len / 2;
-  if (title_pos < 1) {
-    title_pos = 1;
-  }
-
-  int title_end = width - borders;
-  if (title_len > title_end) {
-    title[title_end] = '\0';
-  }
-
-  box(popup_win, 0, 0);
-  mvwprintw(popup_win, 1, title_pos, "%s", title);
-
-  return popup_win;
-}
-
-WINDOW *create_alert_dialog(char *title, int height, int width, int x, int y) {
-  WINDOW *alert_dialog = create_popup_win(title, height, width, x, y);
-  int x1 = width / 4;
-  int x2 = width - x1;
-  mvwprintw(alert_dialog, height - 2, x1, "%s", "(Y)es");
-  mvwprintw(alert_dialog, height - 2, x2, "%s", "(N)o");
-
-  return alert_dialog;
-}
-
-void handle_win_input(WINDOW *win, char *input_buf, int size, bool alert_dialog,
-                      bool display) {
-  noecho();
-
-  int win_width = getmaxx(win);
-
-  int ch = 0;
-  int i = -1;
-  int curs_pos = 0;
-
-  if (alert_dialog) {
-    ch = wgetch(win);
-    input_buf[0] = ch;
-    return;
-  }
-
-  while ((ch = wgetch(win)) != '\n' && i != size - 2) {
-    if (ch == 27) {
-      input_buf[0] = '\0';
-      return;
-    }
-    if (ch == 127) {
-      if (i >= 0 && curs_pos > 0) {
-        input_buf[i] = '\0';
-        mvwprintw(win, 2, curs_pos, "%c", ' ');
-        i--;
-        curs_pos--;
-      } else if (i > 0 && curs_pos <= 0) {
-        int start = i - (win_width - 3);
-        char prev_str[win_width - 2];
-        strncpy(prev_str, &input_buf[start], win_width - 2);
-        prev_str[win_width - 2] = '\0';
-        mvwprintw(win, 2, 1, "%s", prev_str);
-        curs_pos = win_width - 2;
-      }
-      continue;
-    }
-
-    if (curs_pos == win_width - 2) {
-      mvwhline(win, 2, 1, ' ', win_width - 1);
-      refresh();
-      curs_pos = 0;
-    }
-
-    i++;
-    curs_pos++;
-    input_buf[i] = ch;
-
-    if (display) {
-      mvwprintw(win, 2, curs_pos, "%c", ch);
-    }
-
-    box(win, 0, 0);
-  }
-
-  input_buf[i + 1] = '\0';
-}
-
-void wait_input(WINDOW *win) {
-  int ch;
-
-  while ((ch = wgetch(win)) != '\n' && ch != 27 && ch != 'q') {
-  }
-}
-
-void scale_interface() {
+void panel_scale_interface() {
   int padding = 2;
   int dividing_lines = 2;
 
